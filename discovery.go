@@ -67,16 +67,14 @@ func GetMetaPost(url string) (*MetaPost, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		// TODO: return an error here
-		return nil, nil
+		return nil, &BadResponseError{ErrBadStatusCode, res}
 	}
 	post := &Post{}
 	ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	})
 	if !ok {
-		// TODO: return an error here
-		return nil, nil
+		return nil, &BadResponseError{ErrReadTimeout, res}
 	}
 	if err != nil {
 		return nil, err
@@ -94,8 +92,7 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 	res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		// TODO: return error here
-		return nil, nil
+		return nil, &BadResponseError{ErrBadStatusCode, res}
 	}
 
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
@@ -122,21 +119,18 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		// TODO: return error here
-		return nil, nil
+		return nil, &BadResponseError{ErrBadStatusCode, res}
 	}
 	contentType := res.Header.Get("Content-Type")
 	if contentType == "" {
-		// TODO: return error here
-		return nil, nil
+		return nil, &BadResponseError{ErrBadContentType, res}
 	}
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return nil, err
 	}
 	if mediaType != "text/html" {
-		// TODO: return error here
-		return nil, nil
+		return nil, &BadResponseError{ErrBadContentType, res}
 	}
 
 	var links []string
@@ -144,8 +138,7 @@ func Discover(entity string) (*MetaPost, error) {
 		links, err = parseHTMLMetaLinks(res.Body)
 	})
 	if !ok {
-		// TODO: return error here
-		return nil, nil
+		return nil, &BadResponseError{ErrReadTimeout, res}
 	}
 	if err != nil {
 		return nil, err

@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/tent/http-link-go"
@@ -42,8 +43,7 @@ func (client *Client) CreatePost(post *Post) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		// TODO: return error here
-		return nil
+		return &BadResponseError{ErrBadStatusCode, res}
 	}
 
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
@@ -97,4 +97,28 @@ func newRequest(method, url string, body io.Reader) (*http.Request, error) {
 	}
 	req.Header.Set("User-Agent", UserAgent)
 	return req, nil
+}
+
+type BadResponseErrorType int
+
+const (
+	ErrBadStatusCode BadResponseErrorType = iota
+	ErrBadContentType
+	ErrReadTimeout
+)
+
+type BadResponseError struct {
+	Type     BadResponseErrorType
+	Response *http.Response
+}
+
+func (e *BadResponseError) Error() string {
+	switch e.Type {
+	case ErrBadStatusCode:
+		return "tent: incorrect Content-Type received: " + strconv.Quote(e.Response.Header.Get("Content-Type"))
+	case ErrReadTimeout:
+		return "tent: timeout reading response body of " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+	default:
+		return "tent: unexpected " + strconv.Itoa(e.Response.StatusCode) + " performing " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+	}
 }

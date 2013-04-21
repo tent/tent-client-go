@@ -66,10 +66,10 @@ type Post struct {
 
 	Version PostVersion `json:"version"`
 
-	Mentions    []PostMention     `json:"mentions,omitempty"`
-	Licenses    []string          `json:"licenses,omitempty"`
-	Attachments []*PostAttachment `json:"attachments,omitempty"`
-	Permissions PostPermissions   `json:"permissions"`
+	Mentions    []PostMention    `json:"mentions,omitempty"`
+	Licenses    []string         `json:"licenses,omitempty"`
+	Attachments []PostAttachment `json:"attachments,omitempty"`
+	Permissions PostPermissions  `json:"permissions"`
 
 	App PostApp `json:"app,omitempty"`
 

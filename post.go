@@ -2,6 +2,7 @@ package tent
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/tent/http-link-go"
 )
@@ -12,7 +13,7 @@ type PostMention struct {
 	Post           string `json:"post,omitempty"`
 	Version        string `json:"version,omitempty"`
 	Type           string `json:"type,omitempty"`
-	Public         *bool  `json:"public"`
+	Public         bool   `json:"public"`
 }
 
 type PostAttachment struct {
@@ -77,4 +78,42 @@ type Post struct {
 	PublishedAt UnixTime `json:"published_at"`
 
 	Links []link.Link `json:"-"`
+}
+
+const RelCredentials = "https://tent.io/rels/credentials"
+
+var ErrMissingCredentialsLink = errors.New("tent: missing credentials link")
+
+func (post *Post) GetCredentials() (*Post, error) {
+	var credsPostURL string
+	for _, l := range post.Links {
+		if l.Params["rel"] == RelCredentials {
+			credsPostURL = l.URL
+			break
+		}
+	}
+	if credsPostURL == "" {
+		return nil, ErrMissingCredentialsLink
+	}
+
+	req, err := newRequest("GET", credsPostURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return nil, &BadResponseError{ErrBadStatusCode, res}
+	}
+
+	credsPost := &Post{}
+	if ok := timeoutRead(res.Body, func() {
+		err = json.NewDecoder(res.Body).Decode(credsPost)
+	}); !ok {
+		return nil, &BadResponseError{ErrReadTimeout, res}
+	}
+	return credsPost, err
 }

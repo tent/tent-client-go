@@ -70,10 +70,9 @@ func GetMetaPost(url string) (*MetaPost, error) {
 		return nil, &BadResponseError{ErrBadStatusCode, res}
 	}
 	post := &Post{}
-	ok := timeoutRead(res.Body, func() {
+	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
-	})
-	if !ok {
+	}); !ok {
 		return nil, &BadResponseError{ErrReadTimeout, res}
 	}
 	if err != nil {
@@ -134,10 +133,9 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 
 	var links []string
-	ok := timeoutRead(res.Body, func() {
+	if ok := timeoutRead(res.Body, func() {
 		links, err = parseHTMLMetaLinks(res.Body)
-	})
-	if !ok {
+	}); !ok {
 		return nil, &BadResponseError{ErrReadTimeout, res}
 	}
 	if err != nil {

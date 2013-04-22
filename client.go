@@ -54,10 +54,9 @@ func (client *Client) CreatePost(post *Post) error {
 		post.Links = links
 	}
 
-	ok := timeoutRead(res.Body, func() {
+	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
-	})
-	if !ok {
+	}); !ok {
 		return &BadResponseError{ErrReadTimeout, res}
 	}
 

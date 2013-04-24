@@ -137,7 +137,7 @@ type BadResponseError struct {
 
 func (e *BadResponseError) Error() string {
 	switch e.Type {
-	case ErrBadStatusCode:
+	case ErrBadContentType:
 		return "tent: incorrect Content-Type received: " + strconv.Quote(e.Response.Header.Get("Content-Type"))
 	case ErrReadTimeout:
 		return "tent: timeout reading response body of " + e.Response.Request.Method + " " + e.Response.Request.URL.String()

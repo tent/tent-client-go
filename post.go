@@ -15,7 +15,11 @@ type PostMention struct {
 	Post           string `json:"post,omitempty"`
 	Version        string `json:"version,omitempty"`
 	Type           string `json:"type,omitempty"`
-	Public         bool   `json:"public"`
+	PublicFlag     *bool  `json:"public"` // nil or true is public == true; false is public == false
+}
+
+func (mention *PostMention) Public() bool {
+	return mention.PublicFlag == nil || *mention.PublicFlag == true
 }
 
 type PostAttachment struct {

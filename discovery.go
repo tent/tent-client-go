@@ -100,6 +100,9 @@ func GetMetaPost(url string) (*MetaPost, error) {
 
 func Discover(entity string) (*MetaPost, error) {
 	req, err := newRequest("HEAD", entity, nil)
+	if req.URL.Path == "" {
+		req.URL.Path = "/"
+	}
 	res, err := HTTP.Do(req)
 	if err != nil {
 		return nil, err

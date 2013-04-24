@@ -27,7 +27,17 @@ func (client *Client) CreatePost(post *Post) error {
 	if err != nil {
 		return err
 	}
-	req, err := newRequest("POST", client.Servers[0].URLs.NewPost, bytes.NewReader(data))
+	var method, uri string
+	if post.ID == "" || post.Version.ID == "" {
+		method, uri = "POST", client.Servers[0].URLs.NewPost
+	} else {
+		method = "PUT"
+		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, post.Version.ID)
+		if err != nil {
+			return err
+		}
+	}
+	req, err := newRequest(method, uri, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

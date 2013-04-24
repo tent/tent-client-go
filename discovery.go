@@ -33,9 +33,24 @@ type MetaPostServerURLs struct {
 	ServerInfo     string `json:"server_info"`
 }
 
-func (urls *MetaPostServerURLs) PostURL(entity, post string) string {
+func (urls *MetaPostServerURLs) PostURL(entity, post, version string) (string, error) {
 	u := strings.Replace(urls.Post, "{entity}", url.QueryEscape(entity), 1)
-	return strings.Replace(u, "{post}", post, 1)
+	u = strings.Replace(u, "{post}", post, 1)
+	if version != "" {
+		if strings.Contains(u, "?") {
+			uri, err := url.Parse(u)
+			if err != nil {
+				return "", err
+			}
+			q := uri.Query()
+			q.Add("version", version)
+			uri.RawQuery = q.Encode()
+			u = uri.String()
+		} else {
+			u += "?version=" + version
+		}
+	}
+	return u, nil
 }
 
 func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, name, version string) string {

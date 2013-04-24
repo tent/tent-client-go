@@ -1,9 +1,11 @@
 package tent
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 
+	"github.com/tent/hawk-go"
 	"github.com/tent/http-link-go"
 )
 
@@ -84,19 +86,37 @@ const RelCredentials = "https://tent.io/rels/credentials"
 
 var ErrMissingCredentialsLink = errors.New("tent: missing credentials link")
 
-func (post *Post) GetCredentials() (*Post, error) {
-	var credsPostURL string
-	for _, l := range post.Links {
-		if l.Params["rel"] == RelCredentials {
-			credsPostURL = l.URL
-			break
+func (client *Client) GetPost(entity, id, version string) (*Post, error) {
+	post := &Post{}
+	return post, client.Request(func(server *MetaPostServer) error {
+		uri, err := server.URLs.PostURL(entity, id, version)
+		if err != nil {
+			return err
 		}
-	}
-	if credsPostURL == "" {
-		return nil, ErrMissingCredentialsLink
-	}
+		req, err := newRequest("GET", uri, nil)
+		if err != nil {
+			return err
+		}
+		client.SignRequest(req)
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			return &BadResponseError{ErrBadStatusCode, res}
+		}
+		if ok := timeoutRead(res.Body, func() {
+			err = json.NewDecoder(res.Body).Decode(post)
+		}); !ok {
+			return &BadResponseError{ErrReadTimeout, res}
+		}
+		return err
+	})
+}
 
-	req, err := newRequest("GET", credsPostURL, nil)
+func GetPost(url string) (*Post, error) {
+	req, err := newRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,11 +129,37 @@ func (post *Post) GetCredentials() (*Post, error) {
 		return nil, &BadResponseError{ErrBadStatusCode, res}
 	}
 
-	credsPost := &Post{}
+	post := &Post{}
 	if ok := timeoutRead(res.Body, func() {
-		err = json.NewDecoder(res.Body).Decode(credsPost)
+		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
 		return nil, &BadResponseError{ErrReadTimeout, res}
 	}
-	return credsPost, err
+	return post, err
+}
+
+func (post *Post) GetCredentials() (*Post, error) {
+	var credsPostURL string
+	for _, l := range post.Links {
+		if l.Params["rel"] == RelCredentials {
+			credsPostURL = l.URL
+			break
+		}
+	}
+	if credsPostURL == "" {
+		return nil, ErrMissingCredentialsLink
+	}
+	return GetPost(credsPostURL)
+}
+
+type credentials struct {
+	Key string `json:"hawk_key"`
+}
+
+func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {
+	creds := &hawk.Credentials{ID: post.ID, Hash: sha256.New}
+	temp := &credentials{}
+	err := json.Unmarshal(post.Content, temp)
+	creds.Key = temp.Key
+	return creds, err
 }

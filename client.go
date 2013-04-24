@@ -10,13 +10,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tent/hawk-go"
 	"github.com/tent/http-link-go"
 )
 
 type Client struct {
-	App   string
-	KeyID string
-	Key   []byte
+	Credentials *hawk.Credentials
 
 	Servers []MetaPostServer
 }
@@ -61,6 +60,24 @@ func (client *Client) CreatePost(post *Post) error {
 	}
 
 	return err
+}
+
+func (client *Client) Request(req func(*MetaPostServer) error) error {
+	for i, server := range client.Servers {
+		err := req(&server)
+		if err == nil {
+			return nil
+		}
+		if i < len(client.Servers)-1 {
+			return err
+		}
+	}
+	panic("not reached")
+}
+
+func (client *Client) SignRequest(req *http.Request) {
+	auth := hawk.NewRequestAuth(req, client.Credentials, 0)
+	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
 var timeout = 10 * time.Second

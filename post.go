@@ -15,11 +15,11 @@ type PostMention struct {
 	Post           string `json:"post,omitempty"`
 	Version        string `json:"version,omitempty"`
 	Type           string `json:"type,omitempty"`
-	PublicFlag     *bool  `json:"public"` // nil or true is public == true; false is public == false
+	PublicFlag     *bool  `json:"public,omitempty"` // nil or true is public == true; false is public == false
 }
 
 func (mention *PostMention) Public() bool {
-	return mention.PublicFlag == nil || *mention.PublicFlag == true
+	return mention.PublicFlag == nil || *mention.PublicFlag
 }
 
 type PostAttachment struct {
@@ -31,9 +31,13 @@ type PostAttachment struct {
 }
 
 type PostPermissions struct {
-	Public   bool     `json:"public"`
-	Groups   []string `json:"groups,omitempty"`
-	Entities []string `json:"entities,omitempty"`
+	PublicFlag *bool    `json:"public,omitempty"` // nil or true is public == true; false is public == false
+	Groups     []string `json:"groups,omitempty"`
+	Entities   []string `json:"entities,omitempty"`
+}
+
+func (perm *PostPermissions) Public() bool {
+	return perm.PublicFlag == nil || *perm.PublicFlag
 }
 
 type PostApp struct {

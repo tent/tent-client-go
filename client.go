@@ -75,12 +75,10 @@ func (client *Client) CreatePost(post *Post) error {
 func (client *Client) Request(req func(*MetaPostServer) error) error {
 	for i, server := range client.Servers {
 		err := req(&server)
-		if err == nil {
-			return nil
+		if err != nil && i < len(client.Servers)-1 {
+			continue
 		}
-		if i < len(client.Servers)-1 {
-			return err
-		}
+		return err
 	}
 	panic("not reached")
 }

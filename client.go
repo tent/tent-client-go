@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tent/hawk-go"
@@ -125,6 +126,10 @@ func newRequest(method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
+	}
+	if req.URL.Path != "" {
+		// url.Parse unescapes the Path, which can screw with some of the signing stuff
+		req.URL.Path = "/" + strings.SplitN(strings.SplitN(url[8:], "/", 2)[1], "?", 2)[0]
 	}
 	req.Header.Set("User-Agent", UserAgent)
 	return req, nil

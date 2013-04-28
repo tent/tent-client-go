@@ -11,6 +11,9 @@ var UnixTimeUnmarshalError = errors.New("tent: invalid unix timestamp")
 type UnixTime struct{ time.Time }
 
 func (t UnixTime) MarshalJSON() ([]byte, error) {
+	if t.IsZero() {
+		return []byte("0"), nil
+	}
 	return strconv.AppendInt(nil, t.UnixNano()/int64(time.Millisecond), 10), nil
 }
 

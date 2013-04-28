@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/tent/hawk-go"
 	"github.com/tent/http-link-go"
@@ -96,38 +97,17 @@ var ErrMissingCredentialsLink = errors.New("tent: missing credentials link")
 
 func (client *Client) GetPost(entity, id, version string) (*Post, error) {
 	post := &Post{}
-	return post, client.Request(func(server *MetaPostServer) error {
-		uri, err := server.URLs.PostURL(entity, id, version)
-		if err != nil {
-			return err
-		}
-		req, err := newRequest("GET", uri, nil)
-		if err != nil {
-			return err
-		}
-		client.SignRequest(req)
-		res, err := HTTP.Do(req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
-			return &BadResponseError{ErrBadStatusCode, res}
-		}
-		if ok := timeoutRead(res.Body, func() {
-			err = json.NewDecoder(res.Body).Decode(post)
-		}); !ok {
-			return &BadResponseError{ErrReadTimeout, res}
-		}
-		return err
-	})
+	header := make(http.Header)
+	header.Set("Accept", PostMediaType)
+	return post, client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
 }
 
 func GetPost(url string) (*Post, error) {
-	req, err := newRequest("GET", url, nil)
+	req, err := newRequest("GET", url, nil, nil)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Accept", PostMediaType)
 	res, err := HTTP.Do(req)
 	if err != nil {
 		return nil, err

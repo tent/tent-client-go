@@ -72,24 +72,7 @@ type MetaPost struct {
 }
 
 func GetMetaPost(url string) (*MetaPost, error) {
-	req, err := newRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := HTTP.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		return nil, &BadResponseError{ErrBadStatusCode, res}
-	}
-	post := &Post{}
-	if ok := timeoutRead(res.Body, func() {
-		err = json.NewDecoder(res.Body).Decode(post)
-	}); !ok {
-		return nil, &BadResponseError{ErrReadTimeout, res}
-	}
+	post, err := GetPost(url)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +82,7 @@ func GetMetaPost(url string) (*MetaPost, error) {
 }
 
 func Discover(entity string) (*MetaPost, error) {
-	req, err := newRequest("HEAD", entity, nil)
+	req, err := newRequest("HEAD", entity, nil, nil)
 	if req.URL.Path == "" {
 		req.URL.Path = "/"
 	}
@@ -129,7 +112,8 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 
 	// we didn't get anything with the HEAD request, so let's try to GET HTML links
-	req, _ = newRequest("GET", entity, nil)
+	req, _ = newRequest("GET", entity, nil, nil)
+	req.Header.Set("Accept", "text/html")
 	res, err = HTTP.Do(req)
 	if err != nil {
 		return nil, err

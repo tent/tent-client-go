@@ -38,7 +38,7 @@ func (client *Client) CreatePost(post *Post) error {
 			return err
 		}
 	}
-	req, err := newRequest(method, uri, bytes.NewReader(data))
+	req, err := newRequest(method, uri, nil, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,46 @@ func (client *Client) SignRequest(req *http.Request) {
 	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
+func (client *Client) newRequest(method, url string, header http.Header, body io.Reader) (*http.Request, error) {
+	req, err := newRequest(method, url, header, body)
+	if err != nil {
+		return nil, err
+	}
+	client.SignRequest(req)
+	return req, nil
+}
+
+func (client *Client) requestJSON(method string, url func(server *MetaPostServer) (string, error), header http.Header, body []byte, data interface{}) error {
+	return client.Request(func(server *MetaPostServer) error {
+		uri, err := url(server)
+		if err != nil {
+			return err
+		}
+		var bodyReader io.Reader
+		if body != nil {
+			bodyReader = bytes.NewReader(body)
+		}
+		req, err := client.newRequest(method, uri, header, bodyReader)
+		if err != nil {
+			return err
+		}
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			return &BadResponseError{ErrBadStatusCode, res}
+		}
+		if ok := timeoutRead(res.Body, func() {
+			err = json.NewDecoder(res.Body).Decode(data)
+		}); !ok {
+			return &BadResponseError{ErrReadTimeout, res}
+		}
+		return err
+	})
+}
+
 var timeout = 10 * time.Second
 var HTTP = newHTTPClient(timeout)
 var UserAgent = "tent-go/1"
@@ -122,7 +162,7 @@ func timeoutRead(body io.Closer, read func()) (ok bool) {
 	}
 }
 
-func newRequest(method, url string, body io.Reader) (*http.Request, error) {
+func newRequest(method, url string, header http.Header, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
@@ -130,6 +170,9 @@ func newRequest(method, url string, body io.Reader) (*http.Request, error) {
 	if req.URL.Path != "" {
 		// url.Parse unescapes the Path, which can screw with some of the signing stuff
 		req.URL.Path = "/" + strings.SplitN(strings.SplitN(url[8:], "/", 2)[1], "?", 2)[0]
+	}
+	if header != nil {
+		req.Header = header
 	}
 	req.Header.Set("User-Agent", UserAgent)
 	return req, nil

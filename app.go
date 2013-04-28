@@ -26,16 +26,18 @@ func NewAppPost(app *App) *Post {
 	return &Post{Type: PostTypeApp, Content: data, Permissions: PostPermissions{PublicFlag: new(bool)}}
 }
 
+type AppPostTypes struct {
+	Read  []string `json:"read,omitempty"`
+	Write []string `json:"write,omitempty"`
+}
+
 type App struct {
 	Name        string   `json:"name"`
 	URL         string   `json:"url"`
 	Description string   `json:"description,omitempty"`
 	Scopes      []string `json:"scopes,omitempty"`
 
-	PostTypes struct {
-		Read  []string `json:"read,omitempty"`
-		Write []string `json:"write,omitempty"`
-	} `json:"post_types,omitempty"`
+	PostTypes AppPostTypes `json:"post_types,omitempty"`
 
 	RedirectURI           string   `json:"redirect_uri"`
 	NotificationURL       string   `json:"notification_url,omitempty"`

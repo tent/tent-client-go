@@ -53,7 +53,7 @@ func (client *Client) CreatePost(post *Post) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return &BadResponseError{ErrBadStatusCode, res}
+		return newBadResponseError(ErrBadStatusCode, res)
 	}
 
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
@@ -67,7 +67,7 @@ func (client *Client) CreatePost(post *Post) error {
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
-		return &BadResponseError{ErrReadTimeout, res}
+		return newBadResponseError(ErrReadTimeout, res)
 	}
 
 	return err
@@ -118,12 +118,12 @@ func (client *Client) requestJSON(method string, url func(server *MetaPostServer
 		}
 		defer res.Body.Close()
 		if res.StatusCode != 200 {
-			return &BadResponseError{ErrBadStatusCode, res}
+			return newBadResponseError(ErrBadStatusCode, res)
 		}
 		if ok := timeoutRead(res.Body, func() {
 			err = json.NewDecoder(res.Body).Decode(data)
 		}); !ok {
-			return &BadResponseError{ErrReadTimeout, res}
+			return newBadResponseError(ErrReadTimeout, res)
 		}
 		return err
 	})
@@ -187,8 +187,31 @@ const (
 )
 
 type BadResponseError struct {
-	Type     BadResponseErrorType
-	Response *http.Response
+	Type      BadResponseErrorType
+	Response  *http.Response
+	TentError *TentError
+}
+
+type TentError struct {
+	Error  string            `json:"error"`
+	Fields map[string]string `json:"fields"`
+}
+
+const MediaTypeError = "application/vnd.tent.error.v0+json"
+
+func newBadResponseError(typ BadResponseErrorType, res *http.Response) *BadResponseError {
+	err := &BadResponseError{Type: typ, Response: res}
+
+	// try to decode an error message from the body
+	if typ == ErrBadStatusCode {
+		mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
+		if mediaType == MediaTypeError {
+			tentError := &TentError{}
+			json.NewDecoder(res.Body).Decode(tentError)
+			err.TentError = tentError
+		}
+	}
+	return err
 }
 
 func (e *BadResponseError) Error() string {

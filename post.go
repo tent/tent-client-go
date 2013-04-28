@@ -114,14 +114,14 @@ func GetPost(url string) (*Post, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, &BadResponseError{ErrBadStatusCode, res}
+		return nil, newBadResponseError(ErrBadStatusCode, res)
 	}
 
 	post := &Post{}
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
-		return nil, &BadResponseError{ErrReadTimeout, res}
+		return nil, newBadResponseError(ErrReadTimeout, res)
 	}
 	return post, err
 }

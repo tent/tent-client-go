@@ -58,8 +58,8 @@ type PostVersion struct {
 	ID          string              `json:"id,omitempty"`
 	Parents     []PostVersionParent `json:"parents,omitempty"`
 	Message     string              `json:"message,omitempty"`
-	PublishedAt UnixTime            `json:"published_at"`
-	ReceivedAt  UnixTime            `json:"received_at"`
+	PublishedAt *UnixTime           `json:"published_at,omitempty"`
+	ReceivedAt  *UnixTime           `json:"received_at,omitempty"`
 
 	// Used in post version and children lists
 	Type   string `json:"type,omitempty"`
@@ -68,25 +68,25 @@ type PostVersion struct {
 }
 
 type Post struct {
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
 
-	Entity         string `json:"entity"`
+	Entity         string `json:"entity,omitempty"`
 	OriginalEntity string `json:"original_entity,omitempty"`
 
 	Type    string          `json:"type"`
 	Content json.RawMessage `json:"content,omitempty"`
 
-	Version PostVersion `json:"version"`
+	Version *PostVersion `json:"version,omitempty"`
 
 	Mentions    []PostMention    `json:"mentions,omitempty"`
 	Licenses    []string         `json:"licenses,omitempty"`
 	Attachments []PostAttachment `json:"attachments,omitempty"`
-	Permissions PostPermissions  `json:"permissions"`
+	Permissions *PostPermissions `json:"permissions,omitempty"`
 
-	App PostApp `json:"app,omitempty"`
+	App *PostApp `json:"app,omitempty"`
 
-	ReceivedAt  UnixTime `json:"received_at"`
-	PublishedAt UnixTime `json:"published_at"`
+	ReceivedAt  *UnixTime `json:"received_at,omitempty"`
+	PublishedAt *UnixTime `json:"published_at,omitempty"`
 
 	Links []link.Link `json:"-"`
 }

@@ -23,7 +23,7 @@ type Credentials struct {
 
 func NewAppPost(app *App) *Post {
 	data, _ := json.Marshal(app)
-	return &Post{Type: PostTypeApp, Content: data, Permissions: PostPermissions{PublicFlag: new(bool)}}
+	return &Post{Type: PostTypeApp, Content: data, Permissions: &PostPermissions{PublicFlag: new(bool)}}
 }
 
 type AppPostTypes struct {

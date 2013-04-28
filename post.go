@@ -140,14 +140,10 @@ func (post *Post) GetCredentials() (*Post, error) {
 	return GetPost(credsPostURL)
 }
 
-type credentials struct {
-	Key string `json:"hawk_key"`
-}
-
 func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {
 	creds := &hawk.Credentials{ID: post.ID, Hash: sha256.New}
-	temp := &credentials{}
+	temp := &Credentials{}
 	err := json.Unmarshal(post.Content, temp)
-	creds.Key = temp.Key
+	creds.Key = temp.HawkKey
 	return creds, err
 }

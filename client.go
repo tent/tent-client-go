@@ -38,14 +38,15 @@ func (client *Client) CreatePost(post *Post) error {
 			return err
 		}
 	}
-	req, err := newRequest(method, uri, nil, bytes.NewReader(data))
+	header := make(http.Header)
+	header.Set("Content-Type", mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type}))
+	if len(post.Links) > 0 {
+		header.Set("Link", link.Format(post.Links))
+		post.Links = nil
+	}
+	req, err := client.newRequest(method, uri, header, data)
 	if err != nil {
 		return err
-	}
-	req.Header.Set("Content-Type", mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type}))
-	if len(post.Links) > 0 {
-		req.Header.Set("Link", link.Format(post.Links))
-		post.Links = nil
 	}
 	res, err := HTTP.Do(req)
 	if err != nil {

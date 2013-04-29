@@ -107,7 +107,9 @@ func (client *Client) newRequest(method, url string, header http.Header, body []
 	if err != nil {
 		return nil, err
 	}
-	client.SignRequest(req, body)
+	if client.Credentials != nil {
+		client.SignRequest(req, body)
+	}
 	return req, nil
 }
 

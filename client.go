@@ -85,6 +85,9 @@ func (client *Client) Request(req func(*MetaPostServer) error) error {
 }
 
 func (client *Client) SignRequest(req *http.Request) {
+	if client.Credentials == nil {
+		panic("tent: missing credentials")
+	}
 	auth := hawk.NewRequestAuth(req, client.Credentials, 0)
 	req.Header.Set("Authorization", auth.RequestHeader())
 }

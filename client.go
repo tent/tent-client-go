@@ -24,22 +24,78 @@ type Client struct {
 const PostMediaType = "application/vnd.tent.post.v0+json"
 
 func (client *Client) CreatePost(post *Post) error {
+	if post.hasNewAttachments() {
+		return client.createPostWithAttachments(post)
+	}
+	return client.createPost(post)
+}
+
+func (client *Client) createPostWithAttachments(post *Post) error {
+	method, uri, err := client.postCreateURL(post)
+	if err != nil {
+		return err
+	}
+	req, err := client.newRequest(method, uri, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	oldAttachments := make([]*PostAttachment, 0, len(post.Attachments))
+	newAttachments := make([]*PostAttachment, 0, len(post.Attachments))
+	for _, att := range post.Attachments {
+		if att.Data != nil {
+			newAttachments = append(newAttachments, att)
+		} else {
+			oldAttachments = append(oldAttachments, att)
+		}
+	}
+	post.Attachments = oldAttachments
+
+	bodyReader, bodyWriter := io.Pipe()
+	postWriter := NewMultipartPostWriter(bodyWriter)
+	req.Header.Set("Content-Type", postWriter.ContentType())
+	req.Body = bodyReader
+	errChan := make(chan error, 1)
+	go func() {
+		defer bodyWriter.Close()
+		err = postWriter.WritePost(post)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		for _, att := range newAttachments {
+			err = postWriter.WriteAttachment(att)
+			if err != nil {
+				errChan <- err
+				return
+			}
+		}
+		err = postWriter.Close()
+		errChan <- err
+	}()
+
+	res, err := HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	if err = <-errChan; err != nil {
+		return err
+	}
+
+	return parsePostCreateRes(post, res)
+}
+
+func (client *Client) createPost(post *Post) error {
 	data, err := json.Marshal(post)
 	if err != nil {
 		return err
 	}
-	var method, uri string
-	if post.ID == "" || post.Version.ID == "" {
-		method, uri = "POST", client.Servers[0].URLs.NewPost
-	} else {
-		method = "PUT"
-		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, post.Version.ID)
-		if err != nil {
-			return err
-		}
+	method, uri, err := client.postCreateURL(post)
+	if err != nil {
+		return err
 	}
 	header := make(http.Header)
-	header.Set("Content-Type", mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type}))
+	header.Set("Content-Type", post.contentType())
 	if len(post.Links) > 0 {
 		header.Set("Link", link.Format(post.Links))
 		post.Links = nil
@@ -52,6 +108,10 @@ func (client *Client) CreatePost(post *Post) error {
 	if err != nil {
 		return err
 	}
+	return parsePostCreateRes(post, res)
+}
+
+func parsePostCreateRes(post *Post, res *http.Response) error {
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		return newBadResponseError(ErrBadStatusCode, res)
@@ -65,13 +125,26 @@ func (client *Client) CreatePost(post *Post) error {
 		post.Links = links
 	}
 
+	var err error
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
 		return newBadResponseError(ErrReadTimeout, res)
 	}
-
 	return err
+}
+
+func (client *Client) postCreateURL(post *Post) (method string, uri string, err error) {
+	if post.ID == "" || post.Version.ID == "" {
+		method, uri = "POST", client.Servers[0].URLs.NewPost
+	} else {
+		method = "PUT"
+		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, post.Version.ID)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (client *Client) Request(req func(*MetaPostServer) error) error {

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"mime"
 	"net/http"
 
 	"github.com/tent/hawk-go"
@@ -27,8 +28,10 @@ type PostAttachment struct {
 	Name        string `json:"name"`
 	Category    string `json:"category"`
 	ContentType string `json:"content_type"`
-	Size        int64  `json:"size"`
-	Digest      string `json:"digest"`
+	Size        int64  `json:"size,omitempty"`
+	Digest      string `json:"digest,omitempty"`
+
+	Data ReadLenSeeker `json:"-"`
 }
 
 type PostPermissions struct {
@@ -78,10 +81,10 @@ type Post struct {
 
 	Version *PostVersion `json:"version,omitempty"`
 
-	Mentions    []PostMention    `json:"mentions,omitempty"`
-	Licenses    []string         `json:"licenses,omitempty"`
-	Attachments []PostAttachment `json:"attachments,omitempty"`
-	Permissions *PostPermissions `json:"permissions,omitempty"`
+	Mentions    []PostMention     `json:"mentions,omitempty"`
+	Licenses    []string          `json:"licenses,omitempty"`
+	Attachments []*PostAttachment `json:"attachments,omitempty"`
+	Permissions *PostPermissions  `json:"permissions,omitempty"`
 
 	App *PostApp `json:"app,omitempty"`
 
@@ -143,6 +146,19 @@ func (post *Post) LinkedCredentials() (*hawk.Credentials, *Post, error) {
 	}
 	creds, err := CredentialsFromPost(post)
 	return creds, post, err
+}
+
+func (post *Post) hasNewAttachments() bool {
+	for _, att := range post.Attachments {
+		if att.Data != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (post *Post) contentType() string {
+	return mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type})
 }
 
 func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {

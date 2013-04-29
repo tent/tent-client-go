@@ -126,7 +126,7 @@ func GetPost(url string) (*Post, error) {
 	return post, err
 }
 
-func (post *Post) GetCredentials() (*Post, error) {
+func (post *Post) LinkedCredentials() (*hawk.Credentials, *Post, error) {
 	var credsPostURL string
 	for _, l := range post.Links {
 		if l.Params["rel"] == RelCredentials {
@@ -135,9 +135,14 @@ func (post *Post) GetCredentials() (*Post, error) {
 		}
 	}
 	if credsPostURL == "" {
-		return nil, ErrMissingCredentialsLink
+		return nil, nil, ErrMissingCredentialsLink
 	}
-	return GetPost(credsPostURL)
+	post, err := GetPost(credsPostURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	creds, err := CredentialsFromPost(post)
+	return creds, post, err
 }
 
 func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {
@@ -145,5 +150,10 @@ func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {
 	temp := &Credentials{}
 	err := json.Unmarshal(post.Content, temp)
 	creds.Key = temp.HawkKey
+	for _, mention := range post.Mentions {
+		if mention.Type == PostTypeApp {
+			creds.App = mention.Post
+		}
+	}
 	return creds, err
 }

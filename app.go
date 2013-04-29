@@ -72,7 +72,7 @@ func (client *Client) RequestAccessToken(code string) (*hawk.Credentials, error)
 	if err != nil {
 		return nil, err
 	}
-	return tokenRes.HawkCredentials(), err
+	return tokenRes.HawkCredentials(client.Credentials.App), err
 }
 
 type AccessTokenRequest struct {
@@ -88,6 +88,6 @@ type AccessTokenResponse struct {
 	TokenType     string `json:"token_type"`
 }
 
-func (res *AccessTokenResponse) HawkCredentials() *hawk.Credentials {
-	return &hawk.Credentials{Key: res.HawkKey, ID: res.HawkID, Hash: sha256.New}
+func (res *AccessTokenResponse) HawkCredentials(app string) *hawk.Credentials {
+	return &hawk.Credentials{Key: res.HawkKey, ID: res.HawkID, App: app, Hash: sha256.New}
 }

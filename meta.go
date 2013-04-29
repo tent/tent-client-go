@@ -27,6 +27,15 @@ type MetaPostServerURLs struct {
 	ServerInfo     string `json:"server_info"`
 }
 
+func (urls *MetaPostServerURLs) OAuthURL(appID string, state string) (string, error) {
+	u, err := url.Parse(urls.OAuthAuth)
+	if err != nil {
+		return "", err
+	}
+	u.RawQuery = url.Values{"client_id": {appID}, "state": {state}}.Encode()
+	return u.String(), nil
+}
+
 func (urls *MetaPostServerURLs) PostURL(entity, post, version string) (string, error) {
 	u := strings.Replace(urls.Post, "{entity}", url.QueryEscape(entity), 1)
 	u = strings.Replace(u, "{post}", post, 1)

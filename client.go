@@ -84,20 +84,30 @@ func (client *Client) Request(req func(*MetaPostServer) error) error {
 	panic("not reached")
 }
 
-func (client *Client) SignRequest(req *http.Request) {
+func (client *Client) SignRequest(req *http.Request, body []byte) {
 	if client.Credentials == nil {
 		panic("tent: missing credentials")
 	}
 	auth := hawk.NewRequestAuth(req, client.Credentials, 0)
+	if body != nil {
+		mediaType, _, _ := mime.ParseMediaType(req.Header.Get("Content-Type"))
+		h := auth.PayloadHash(mediaType)
+		h.Write(body)
+		auth.SetHash(h)
+	}
 	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
-func (client *Client) newRequest(method, url string, header http.Header, body io.Reader) (*http.Request, error) {
-	req, err := newRequest(method, url, header, body)
+func (client *Client) newRequest(method, url string, header http.Header, body []byte) (*http.Request, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+	req, err := newRequest(method, url, header, bodyReader)
 	if err != nil {
 		return nil, err
 	}
-	client.SignRequest(req)
+	client.SignRequest(req, body)
 	return req, nil
 }
 
@@ -107,11 +117,7 @@ func (client *Client) requestJSON(method string, url func(server *MetaPostServer
 		if err != nil {
 			return err
 		}
-		var bodyReader io.Reader
-		if body != nil {
-			bodyReader = bytes.NewReader(body)
-		}
-		req, err := client.newRequest(method, uri, header, bodyReader)
+		req, err := client.newRequest(method, uri, header, body)
 		if err != nil {
 			return err
 		}

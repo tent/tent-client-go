@@ -56,7 +56,7 @@ func (urls *MetaPostServerURLs) PostURL(entity, post, version string) (string, e
 	return u, nil
 }
 
-func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, name, version string) string {
+func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, version, name string) string {
 	u := strings.Replace(urls.PostAttachment, "{entity}", url.QueryEscape(entity), 1)
 	u = strings.Replace(u, "{post}", post, 1)
 	u = strings.Replace(u, "{name}", url.QueryEscape(name), 1)

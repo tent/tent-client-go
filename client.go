@@ -168,6 +168,32 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 	return
 }
 
+func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, err error) {
+	err = client.Request(func(server *MetaPostServer) error {
+		if version == "" {
+			version = "latest"
+		}
+		url := server.URLs.PostAttachmentURL(entity, post, version, name)
+		req, err := client.newRequest("GET", url, nil, nil)
+		if accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		if err != nil {
+			return err
+		}
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		if res.StatusCode != 200 {
+			return newBadResponseError(ErrBadStatusCode, res)
+		}
+		body = res.Body
+		return nil
+	})
+	return
+}
+
 func (client *Client) Request(req func(*MetaPostServer) error) error {
 	for i, server := range client.Servers {
 		err := req(&server)

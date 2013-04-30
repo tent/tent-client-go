@@ -24,6 +24,7 @@ type Client struct {
 const PostMediaType = "application/vnd.tent.post.v0+json"
 
 func (client *Client) CreatePost(post *Post) error {
+	defer post.initAttachments(client)
 	if post.hasNewAttachments() {
 		return client.createPostWithAttachments(post)
 	}
@@ -144,6 +145,26 @@ func (client *Client) postCreateURL(post *Post) (method string, uri string, err 
 			return
 		}
 	}
+	return
+}
+
+func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, err error) {
+	err = client.Request(func(server *MetaPostServer) error {
+		url := server.URLs.AttachmentURL(entity, digest)
+		req, err := client.newRequest("GET", url, nil, nil)
+		if err != nil {
+			return err
+		}
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		if res.StatusCode != 200 {
+			return newBadResponseError(ErrBadStatusCode, res)
+		}
+		body = res.Body
+		return nil
+	})
 	return
 }
 

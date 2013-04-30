@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"io"
 	"mime"
 	"net/http"
 
@@ -31,7 +32,36 @@ type PostAttachment struct {
 	Size        int64  `json:"size,omitempty"`
 	Digest      string `json:"digest,omitempty"`
 
+	// Include Data to upload a new attachment with the post
 	Data ReadLenSeeker `json:"-"`
+
+	entity string `json:"-"`
+	body   io.ReadCloser
+	client *Client
+}
+
+// Read downloads and reads from the attachment body.
+// The attachment must have be initialized by downloading the containing post
+// from the server in order to use Read.
+func (att *PostAttachment) Read(p []byte) (int, error) {
+	if att.client == nil || att.Digest == "" || att.entity == "" {
+		return 0, errors.New("tent: improperly initialized attachment")
+	}
+	if att.body == nil {
+		var err error
+		att.body, err = att.client.GetAttachment(att.entity, att.Digest)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return att.body.Read(p)
+}
+
+func (att *PostAttachment) Close() error {
+	if att.body == nil {
+		return nil
+	}
+	return att.body.Close()
 }
 
 type PostPermissions struct {
@@ -102,6 +132,7 @@ func (client *Client) GetPost(entity, id, version string) (*Post, error) {
 	post := &Post{}
 	header := make(http.Header)
 	header.Set("Accept", PostMediaType)
+	defer post.initAttachments(client)
 	return post, client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
 }
 
@@ -126,6 +157,7 @@ func GetPost(url string) (*Post, error) {
 	}); !ok {
 		return nil, newBadResponseError(ErrReadTimeout, res)
 	}
+	post.initAttachments(&Client{})
 	return post, err
 }
 
@@ -159,6 +191,13 @@ func (post *Post) hasNewAttachments() bool {
 
 func (post *Post) contentType() string {
 	return mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type})
+}
+
+func (post *Post) initAttachments(client *Client) {
+	for _, att := range post.Attachments {
+		att.entity = post.Entity
+		att.client = client
+	}
 }
 
 func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {

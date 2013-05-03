@@ -21,7 +21,13 @@ type Client struct {
 	Servers []MetaPostServer
 }
 
-const PostMediaType = "application/vnd.tent.post.v0+json"
+const (
+	MediaTypePost         = "application/vnd.tent.post.v0+json"
+	MediaTypePostsFeed    = "application/vnd.tent.posts-feed.v0+json"
+	MediaTypePostVersions = "application/vnd.tent.post-versions.v0+json"
+	MediaTypePostMentions = "application/vnd.tent.post-mentions.v0+json"
+	MediaTypePostChildren = "application/vnd.tent.post-children.v0+json"
+)
 
 func (client *Client) CreatePost(post *Post) error {
 	defer post.initAttachments(client)
@@ -240,25 +246,29 @@ func (client *Client) requestJSON(method string, url func(server *MetaPostServer
 		if err != nil {
 			return err
 		}
-		req, err := client.newRequest(method, uri, header, body)
-		if err != nil {
-			return err
-		}
-		res, err := HTTP.Do(req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-		if res.StatusCode != 200 {
-			return newBadResponseError(ErrBadStatusCode, res)
-		}
-		if ok := timeoutRead(res.Body, func() {
-			err = json.NewDecoder(res.Body).Decode(data)
-		}); !ok {
-			return newBadResponseError(ErrReadTimeout, res)
-		}
-		return err
+		return client.requestJSONURL(method, uri, header, body, data)
 	})
+}
+
+func (client *Client) requestJSONURL(method string, url string, header http.Header, body []byte, data interface{}) error {
+	req, err := client.newRequest(method, url, header, body)
+	if err != nil {
+		return err
+	}
+	res, err := HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return newBadResponseError(ErrBadStatusCode, res)
+	}
+	if ok := timeoutRead(res.Body, func() {
+		err = json.NewDecoder(res.Body).Decode(data)
+	}); !ok {
+		return newBadResponseError(ErrReadTimeout, res)
+	}
+	return err
 }
 
 var timeout = 10 * time.Second

@@ -131,7 +131,7 @@ var ErrMissingCredentialsLink = errors.New("tent: missing credentials link")
 func (client *Client) GetPost(entity, id, version string) (*Post, error) {
 	post := &Post{}
 	header := make(http.Header)
-	header.Set("Accept", PostMediaType)
+	header.Set("Accept", MediaTypePost)
 	defer post.initAttachments(client)
 	return post, client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
 }
@@ -141,7 +141,7 @@ func GetPost(url string) (*Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", PostMediaType)
+	req.Header.Set("Accept", MediaTypePost)
 	res, err := HTTP.Do(req)
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (post *Post) hasNewAttachments() bool {
 }
 
 func (post *Post) contentType() string {
-	return mime.FormatMediaType(PostMediaType, map[string]string{"type": post.Type})
+	return mime.FormatMediaType(MediaTypePost, map[string]string{"type": post.Type})
 }
 
 func (post *Post) initAttachments(client *Client) {

@@ -17,33 +17,18 @@ func (q *PostsFeedQuery) Limit(n int) *PostsFeedQuery {
 	return q
 }
 
-func (q *PostsFeedQuery) SincePost(entity, id string) *PostsFeedQuery {
-	q.Set("since_post", entity+" "+id)
+func (q *PostsFeedQuery) Since(t time.Time, version string) *PostsFeedQuery {
+	q.Set("since", paginationRef(t, version))
 	return q
 }
 
-func (q *PostsFeedQuery) BeforePost(entity, id string) *PostsFeedQuery {
-	q.Set("before_post", entity+" "+id)
+func (q *PostsFeedQuery) Before(t time.Time, version string) *PostsFeedQuery {
+	q.Set("before", paginationRef(t, version))
 	return q
 }
 
-func (q *PostsFeedQuery) UntilPost(entity, id string) *PostsFeedQuery {
-	q.Set("until_post", entity+" "+id)
-	return q
-}
-
-func (q *PostsFeedQuery) SinceTime(t time.Time) *PostsFeedQuery {
-	q.Set("since_time", timeMillis(t))
-	return q
-}
-
-func (q *PostsFeedQuery) BeforeTime(t time.Time) *PostsFeedQuery {
-	q.Set("before_time", timeMillis(t))
-	return q
-}
-
-func (q *PostsFeedQuery) UntilTime(t time.Time) *PostsFeedQuery {
-	q.Set("until_time", timeMillis(t))
+func (q *PostsFeedQuery) Until(t time.Time, version string) *PostsFeedQuery {
+	q.Set("until", paginationRef(t, version))
 	return q
 }
 
@@ -73,6 +58,10 @@ func (q *PostsFeedQuery) Mentions(mentions ...[]string) *PostsFeedQuery {
 	return q
 }
 
-func timeMillis(t time.Time) string {
-	return strconv.FormatInt(t.UnixNano()/int64(time.Millisecond), 10)
+func paginationRef(t time.Time, version string) string {
+	ref := strconv.FormatInt(t.UnixNano()/int64(time.Millisecond), 10)
+	if version != "" {
+		ref += " " + version
+	}
+	return ref
 }

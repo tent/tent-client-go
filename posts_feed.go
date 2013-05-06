@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 var ErrNoPage = errors.New("tent: the requested page does not exist")
@@ -26,7 +27,7 @@ func (links *PageLinks) get(query string, data linker) error {
 	links.baseURL.RawQuery = query[1:]
 	header := make(http.Header)
 	header.Set("Accept", links.accept)
-	err := links.client.requestJSONURL("GET", links.baseURL.String(), header, nil, data)
+	_, err := links.client.requestJSONURL("GET", links.baseURL.String(), header, nil, data)
 	if err != nil {
 		return err
 	}
@@ -42,15 +43,26 @@ type linker interface {
 }
 
 type PostsFeedPage struct {
-	Posts []*Post   `json:"data"`
-	Links PageLinks `json:"pages"`
+	Posts       []*Post   `json:"data"`
+	Links       PageLinks `json:"pages"`
+	ETag        string    `json:"-"`
+	Count       int       `json:"-"`
+	NotModified bool      `json:"-"`
 }
 
-func (client *Client) GetFeed(q *PostsFeedQuery) (*PostsFeedPage, error) {
+type PageRequest struct {
+	ETag      string
+	CountOnly bool
+}
+
+func (client *Client) GetFeed(q *PostsFeedQuery, r *PageRequest) (*PostsFeedPage, error) {
 	data := &PostsFeedPage{}
 	header := make(http.Header)
 	header.Set("Accept", MediaTypePostsFeed)
-	err := client.requestJSON("GET", func(server *MetaPostServer) (string, error) {
+	if r != nil && r.ETag != "" {
+		header.Set("If-None-Match", r.ETag)
+	}
+	urlFunc := func(server *MetaPostServer) (string, error) {
 		u, err := url.Parse(server.URLs.PostsFeed)
 		if err != nil {
 			return "", err
@@ -64,12 +76,43 @@ func (client *Client) GetFeed(q *PostsFeedQuery) (*PostsFeedPage, error) {
 			u.RawQuery = query.Encode()
 		}
 		return u.String(), nil
-	}, header, nil, data)
+	}
+	if r != nil && r.CountOnly {
+		err := client.Request(func(server *MetaPostServer) error {
+			url, err := urlFunc(server)
+			if err != nil {
+				return err
+			}
+			req, err := client.newRequest("HEAD", url, header, nil)
+			if err != nil {
+				return err
+			}
+			res, err := HTTP.Do(req)
+			if res.StatusCode == 304 {
+				data.ETag = res.Header.Get("Etag")
+				data.NotModified = true
+				return nil
+			}
+			if res.StatusCode != 200 {
+				return newBadResponseError(ErrBadStatusCode, res)
+			}
+			data.Count, _ = strconv.Atoi(res.Header.Get("Count"))
+			return nil
+		})
+		return data, err
+	}
+	resHeader, err := client.requestJSON("GET", urlFunc, header, nil, data)
 	if err != nil {
+		if resErr, ok := err.(*BadResponseError); ok && resErr.Type == ErrBadStatusCode && resErr.Response.StatusCode == 304 {
+			data.ETag = resHeader.Get("Etag")
+			data.NotModified = true
+			return data, nil
+		}
 		return nil, err
 	}
 	data.Links.client = client
 	data.Links.accept = MediaTypePostsFeed
+	data.ETag = resHeader.Get("Etag")
 	return data, nil
 }
 

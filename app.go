@@ -68,7 +68,7 @@ func (client *Client) RequestAccessToken(code string) (*hawk.Credentials, error)
 	header := make(http.Header)
 	header.Set("Accept", "application/json")
 	header.Set("Content-Type", "application/json")
-	err := client.requestJSON("POST", oauthTokenURL, header, data, tokenRes)
+	_, err := client.requestJSON("POST", oauthTokenURL, header, data, tokenRes)
 	if err != nil {
 		return nil, err
 	}

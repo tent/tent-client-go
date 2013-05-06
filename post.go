@@ -133,7 +133,8 @@ func (client *Client) GetPost(entity, id, version string) (*Post, error) {
 	header := make(http.Header)
 	header.Set("Accept", MediaTypePost)
 	defer post.initAttachments(client)
-	return post, client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
+	_, err := client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
+	return post, err
 }
 
 func GetPost(url string) (*Post, error) {

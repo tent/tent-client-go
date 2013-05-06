@@ -240,35 +240,36 @@ func (client *Client) newRequest(method, url string, header http.Header, body []
 	return req, nil
 }
 
-func (client *Client) requestJSON(method string, url func(server *MetaPostServer) (string, error), header http.Header, body []byte, data interface{}) error {
-	return client.Request(func(server *MetaPostServer) error {
+func (client *Client) requestJSON(method string, url func(server *MetaPostServer) (string, error), reqHeader http.Header, body []byte, data interface{}) (header http.Header, err error) {
+	return header, client.Request(func(server *MetaPostServer) error {
 		uri, err := url(server)
 		if err != nil {
 			return err
 		}
-		return client.requestJSONURL(method, uri, header, body, data)
+		header, err = client.requestJSONURL(method, uri, reqHeader, body, data)
+		return err
 	})
 }
 
-func (client *Client) requestJSONURL(method string, url string, header http.Header, body []byte, data interface{}) error {
+func (client *Client) requestJSONURL(method string, url string, header http.Header, body []byte, data interface{}) (http.Header, error) {
 	req, err := client.newRequest(method, url, header, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return newBadResponseError(ErrBadStatusCode, res)
+		return nil, newBadResponseError(ErrBadStatusCode, res)
 	}
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(data)
 	}); !ok {
-		return newBadResponseError(ErrReadTimeout, res)
+		return nil, newBadResponseError(ErrReadTimeout, res)
 	}
-	return err
+	return res.Header, err
 }
 
 var timeout = 10 * time.Second

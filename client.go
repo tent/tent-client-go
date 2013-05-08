@@ -242,7 +242,7 @@ func (client *Client) newRequest(method, url string, header http.Header, body []
 	return req, nil
 }
 
-func (client *Client) requestJSON(method string, url func(server *MetaPostServer) (string, error), reqHeader http.Header, body []byte, data interface{}) (header http.Header, err error) {
+func (client *Client) requestJSON(method string, url urlFunc, reqHeader http.Header, body []byte, data interface{}) (header http.Header, err error) {
 	return header, client.Request(func(server *MetaPostServer) error {
 		uri, err := url(server)
 		if err != nil {
@@ -272,6 +272,38 @@ func (client *Client) requestJSONURL(method string, url string, header http.Head
 		return nil, newBadResponseError(ErrReadTimeout, res)
 	}
 	return res.Header, err
+}
+
+type urlFunc func(server *MetaPostServer) (string, error)
+
+func (client *Client) requestCount(urlFunc urlFunc, header http.Header) (PageHeader, error) {
+	h := PageHeader{}
+	err := client.Request(func(server *MetaPostServer) error {
+		url, err := urlFunc(server)
+		if err != nil {
+			return err
+		}
+		req, err := client.newRequest("HEAD", url, header, nil)
+		if err != nil {
+			return err
+		}
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return err
+		}
+		res.Body.Close()
+		if res.StatusCode == 304 {
+			h.ETag = res.Header.Get("Etag")
+			h.NotModified = true
+			return nil
+		}
+		if res.StatusCode != 200 {
+			return newBadResponseError(ErrBadStatusCode, res)
+		}
+		h.Count, _ = strconv.Atoi(res.Header.Get("Count"))
+		return nil
+	})
+	return h, err
 }
 
 var timeout = 10 * time.Second

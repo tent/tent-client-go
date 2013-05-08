@@ -150,6 +150,8 @@ func (client *Client) postCreateURL(post *Post) (method string, uri string, err 
 		if err != nil {
 			return
 		}
+		post.Entity = ""
+		post.ID = ""
 	}
 	return
 }

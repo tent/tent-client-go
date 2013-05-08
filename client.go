@@ -142,11 +142,11 @@ func parsePostCreateRes(post *Post, res *http.Response) error {
 }
 
 func (client *Client) postCreateURL(post *Post) (method string, uri string, err error) {
-	if post.ID == "" || post.Version.ID == "" {
+	if post.ID == "" {
 		method, uri = "POST", client.Servers[0].URLs.NewPost
 	} else {
 		method = "PUT"
-		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, post.Version.ID)
+		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, "")
 		if err != nil {
 			return
 		}

@@ -30,8 +30,8 @@ func Discover(entity string) (*MetaPost, error) {
 		}
 		var metaLinks []string
 		for _, l := range links {
-			if l.Params["rel"] == RelMetaPost {
-				metaLinks = append(metaLinks, l.URL)
+			if l.Rel == RelMetaPost {
+				metaLinks = append(metaLinks, l.URI)
 			}
 		}
 		if len(metaLinks) > 0 {

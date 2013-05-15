@@ -165,8 +165,8 @@ func GetPost(url string) (*Post, error) {
 func (post *Post) LinkedCredentials() (*hawk.Credentials, *Post, error) {
 	var credsPostURL string
 	for _, l := range post.Links {
-		if l.Params["rel"] == RelCredentials {
-			credsPostURL = l.URL
+		if l.Rel == RelCredentials {
+			credsPostURL = l.URI
 			break
 		}
 	}

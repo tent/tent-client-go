@@ -12,6 +12,14 @@ import (
 	"github.com/tent/http-link-go"
 )
 
+type PostRef struct {
+	Entity         string `json:"entity,omitempty"`
+	OriginalEntity string `json:"original_entity,omitempty"`
+	Post           string `json:"post,omitempty"`
+	Version        string `json:"version,omitempty"`
+	Type           string `json:"type,omitempty"`
+}
+
 type PostMention struct {
 	Entity         string `json:"entity,omitempty"`
 	OriginalEntity string `json:"original_entity,omitempty"`
@@ -111,6 +119,7 @@ type Post struct {
 
 	Version *PostVersion `json:"version,omitempty"`
 
+	Refs        []PostRef         `json:"refs,omitempty"`
 	Mentions    []PostMention     `json:"mentions,omitempty"`
 	Licenses    []string          `json:"licenses,omitempty"`
 	Attachments []*PostAttachment `json:"attachments,omitempty"`

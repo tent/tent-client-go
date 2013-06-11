@@ -50,10 +50,7 @@ type AppAuth struct {
 	Active bool     `json:"active"`
 	Scopes []string `json:"scopes,omitempty"`
 
-	PostTypes struct {
-		Read  []string `json:"read,omitempty"`
-		Write []string `json:"write,omitempty"`
-	} `json:"post_types,omitempty"`
+	PostTypes AppPostTypes `json:"post_types,omitempty"`
 
 	Post *Post `json:"-"`
 }

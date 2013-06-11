@@ -7,6 +7,9 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/tent/hawk-go"
 	"github.com/tent/http-link-go"
@@ -79,7 +82,7 @@ type PostPermissions struct {
 }
 
 func (perm *PostPermissions) Public() bool {
-	return perm.PublicFlag == nil || *perm.PublicFlag
+	return perm == nil || perm.PublicFlag == nil || *perm.PublicFlag
 }
 
 type PostApp struct {
@@ -133,20 +136,56 @@ type Post struct {
 	Links []link.Link `json:"-"`
 }
 
+type PostEnvelope struct {
+	Post *Post  `json:"post"`
+	Refs []Post `json:"refs"`
+}
+
 const RelCredentials = "https://tent.io/rels/credentials"
 
 var ErrMissingCredentialsLink = errors.New("tent: missing credentials link")
 
-func (client *Client) GetPost(entity, id, version string) (*Post, error) {
-	post := &Post{}
+type PostRequest struct {
+	MaxRefs int
+}
+
+func (client *Client) GetPost(entity, id, version string, r *PostRequest) (*PostEnvelope, error) {
+	post := &PostEnvelope{}
 	header := make(http.Header)
 	header.Set("Accept", MediaTypePost)
-	defer post.initAttachments(client)
-	_, err := client.requestJSON("GET", func(server *MetaPostServer) (string, error) { return server.URLs.PostURL(entity, id, version) }, header, nil, post)
+	urlFunc := func(server *MetaPostServer) (string, error) {
+		u, err := server.URLs.PostURL(entity, id, version)
+		if err != nil {
+			return "", err
+		}
+		if r != nil && r.MaxRefs > 0 {
+			if strings.Contains(u, "?") {
+				uri, err := url.Parse(u)
+				if err != nil {
+					return "", err
+				}
+				q := uri.Query()
+				q.Add("max_refs", strconv.Itoa(r.MaxRefs))
+				uri.RawQuery = q.Encode()
+				u = uri.String()
+			} else {
+				u += "?max_refs=" + strconv.Itoa(r.MaxRefs)
+			}
+		}
+		return u, nil
+	}
+	_, err := client.requestJSON("GET", urlFunc, header, nil, post)
+	if post.Post == nil {
+		return nil, newBadResponseError(ErrBadData, nil)
+	}
+	post.Post.initAttachments(client)
+	for _, p := range post.Refs {
+		p.initAttachments(client)
+	}
 	return post, err
 }
 
-func GetPost(url string) (*Post, error) {
+func GetPost(url string) (*PostEnvelope, error) {
 	req, err := newRequest("GET", url, nil, nil)
 	if err != nil {
 		return nil, err
@@ -161,13 +200,20 @@ func GetPost(url string) (*Post, error) {
 		return nil, newBadResponseError(ErrBadStatusCode, res)
 	}
 
-	post := &Post{}
+	post := &PostEnvelope{}
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
 		return nil, newBadResponseError(ErrReadTimeout, res)
 	}
-	post.initAttachments(&Client{})
+	if post.Post == nil {
+		return nil, newBadResponseError(ErrBadData, res)
+	}
+	c := &Client{}
+	post.Post.initAttachments(c)
+	for _, p := range post.Refs {
+		p.initAttachments(c)
+	}
 	return post, err
 }
 
@@ -182,12 +228,12 @@ func (post *Post) LinkedCredentials() (*hawk.Credentials, *Post, error) {
 	if credsPostURL == "" {
 		return nil, nil, ErrMissingCredentialsLink
 	}
-	post, err := GetPost(credsPostURL)
+	p, err := GetPost(credsPostURL)
 	if err != nil {
 		return nil, nil, err
 	}
-	creds, err := CredentialsFromPost(post)
-	return creds, post, err
+	creds, err := CredentialsFromPost(p.Post)
+	return creds, p.Post, err
 }
 
 func (post *Post) hasNewAttachments() bool {
@@ -204,6 +250,9 @@ func (post *Post) contentType() string {
 }
 
 func (post *Post) initAttachments(client *Client) {
+	if post == nil {
+		return
+	}
 	for _, att := range post.Attachments {
 		att.entity = post.Entity
 		att.client = client

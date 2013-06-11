@@ -1,57 +1,77 @@
 package tent
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
 )
 
-type PostVersionsPage struct {
-	Versions []*PostVersion `json:"data"`
+type PageHeader struct {
+	ETag        string
+	Count       int
+	NotModified bool
+}
+
+type PageRequest struct {
+	ETag      string
+	CountOnly bool
+	Limit     int
+}
+
+type PostListPage struct {
+	Mentions []*PostMention `json:"mentions"`
+	Versions []*PostVersion `json:"versions"`
+	Posts    []*Post        `json:"posts"`
 	Links    PageLinks      `json:"pages"`
 	Header   PageHeader     `json:"-"`
 }
 
-func (client *Client) GetPostVersions(entity, post string, r *PageRequest) (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, client.getPostListPage(entity, post, "", MediaTypePostVersions, r, page)
+type PageLinks struct {
+	First string `json:"first"`
+	Prev  string `json:"prev"`
+	Next  string `json:"next"`
+	Last  string `json:"last"`
+
+	accept  string
+	baseURL *url.URL
+	client  *Client
 }
 
-func (client *Client) GetPostChildren(entity, post, version string, r *PageRequest) (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, client.getPostListPage(entity, post, version, MediaTypePostChildren, r, page)
+func (links *PageLinks) get(query string) (*PostListPage, error) {
+	if query == "" {
+		return nil, ErrNoPage
+	}
+	page := &PostListPage{Links: PageLinks{accept: links.accept, baseURL: links.baseURL, client: links.client}}
+	links.baseURL.RawQuery = query[1:]
+	header := make(http.Header)
+	header.Set("Accept", links.accept)
+	_, err := links.client.requestJSONURL("GET", links.baseURL.String(), header, nil, page)
+	if err != nil {
+		return nil, err
+	}
+	return page, nil
 }
 
-func (f *PostVersionsPage) links() *PageLinks   { return &f.Links }
-func (f *PostVersionsPage) header() *PageHeader { return &f.Header }
-
-func (f *PostVersionsPage) First() (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, f.Links.get(f.Links.First, page)
+func (client *Client) GetFeed(q *PostsFeedQuery, r *PageRequest) (*PostListPage, error) {
+	return client.getPostListPage("", "", "", MediaTypePostsFeed, r, q.Values)
 }
 
-func (f *PostVersionsPage) Prev() (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, f.Links.get(f.Links.Prev, page)
+func (client *Client) GetVersions(entity, post string, r *PageRequest) (*PostListPage, error) {
+	return client.getPostListPage(entity, post, "", MediaTypePostVersions, r, nil)
 }
 
-func (f *PostVersionsPage) Next() (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, f.Links.get(f.Links.Next, page)
+func (client *Client) GetChildren(entity, post, version string, r *PageRequest) (*PostListPage, error) {
+	return client.getPostListPage(entity, post, version, MediaTypePostChildren, r, nil)
 }
 
-func (f *PostVersionsPage) Last() (*PostVersionsPage, error) {
-	page := &PostVersionsPage{}
-	return page, f.Links.get(f.Links.Last, page)
+func (client *Client) GetMentions(entity, post string, r *PageRequest) (*PostListPage, error) {
+	return client.getPostListPage(entity, post, "", MediaTypePostMentions, r, nil)
 }
 
-type PostMentionsPage struct {
-	Mentions []*PostMention `json:"data"`
-	Links    PageLinks      `json:"pages"`
-	Header   PageHeader     `json:"-"`
-}
+var ErrNoPage = errors.New("tent: the requested page does not exist")
 
-func (client *Client) getPostListPage(entity, post, version, mediaType string, r *PageRequest, data pageType) error {
+func (client *Client) getPostListPage(entity, post, version, mediaType string, r *PageRequest, query url.Values) (*PostListPage, error) {
 	header := make(http.Header)
 	header.Set("Accept", mediaType)
 	if r != nil && r.ETag != "" {
@@ -61,8 +81,15 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 	if r != nil {
 		limit = r.Limit
 	}
+	page := &PostListPage{}
 	urlFunc := func(server *MetaPostServer) (string, error) {
-		pu, err := server.URLs.PostURL(entity, post, version)
+		var pu string
+		var err error
+		if mediaType == MediaTypePostsFeed {
+			pu = server.URLs.PostsFeed
+		} else {
+			pu, err = server.URLs.PostURL(entity, post, version)
+		}
 		if err != nil {
 			return "", err
 		}
@@ -70,11 +97,16 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 		if err != nil {
 			return "", err
 		}
-		data.links().baseURL = u
-		if limit > 0 {
-			query := u.Query()
-			query.Set("limit", strconv.Itoa(limit))
-			u.RawQuery = query.Encode()
+		page.Links.baseURL = u
+		if len(query) > 0 || limit > 0 {
+			uq := u.Query()
+			for k, v := range query {
+				uq[k] = v
+			}
+			if limit > 0 {
+				uq.Set("limit", strconv.Itoa(limit))
+			}
+			u.RawQuery = uq.Encode()
 		}
 		return u.String(), nil
 	}
@@ -83,48 +115,25 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 	}
 	if r != nil && r.CountOnly {
 		var err error
-		*data.header(), err = client.requestCount(urlFunc, header)
-		return err
+		page.Header, err = client.requestCount(urlFunc, header)
+		return nil, err
 	}
-	resHeader, err := client.requestJSON("GET", urlFunc, header, nil, data)
+	resHeader, err := client.requestJSON("GET", urlFunc, header, nil, page)
 	if err != nil {
 		if resErr, ok := err.(*BadResponseError); ok && resErr.Type == ErrBadStatusCode && resErr.Response.StatusCode == 304 {
-			data.header().ETag = resHeader.Get("Etag")
-			data.header().NotModified = true
-			return nil
+			page.Header.ETag = resHeader.Get("Etag")
+			page.Header.NotModified = true
+			return page, nil
 		}
-		return err
+		return nil, err
 	}
-	data.links().client = client
-	data.links().accept = mediaType
-	data.header().ETag = resHeader.Get("Etag")
-	return nil
+	page.Links.client = client
+	page.Links.accept = mediaType
+	page.Header.ETag = resHeader.Get("Etag")
+	return page, nil
 }
 
-func (client *Client) GetPostMentions(entity, post string, r *PageRequest) (*PostMentionsPage, error) {
-	page := &PostMentionsPage{}
-	return page, client.getPostListPage(entity, post, "", MediaTypePostMentions, r, page)
-}
-
-func (f *PostMentionsPage) links() *PageLinks   { return &f.Links }
-func (f *PostMentionsPage) header() *PageHeader { return &f.Header }
-
-func (f *PostMentionsPage) First() (*PostMentionsPage, error) {
-	page := &PostMentionsPage{}
-	return page, f.Links.get(f.Links.First, page)
-}
-
-func (f *PostMentionsPage) Prev() (*PostMentionsPage, error) {
-	page := &PostMentionsPage{}
-	return page, f.Links.get(f.Links.Prev, page)
-}
-
-func (f *PostMentionsPage) Next() (*PostMentionsPage, error) {
-	page := &PostMentionsPage{}
-	return page, f.Links.get(f.Links.Next, page)
-}
-
-func (f *PostMentionsPage) Last() (*PostMentionsPage, error) {
-	page := &PostMentionsPage{}
-	return page, f.Links.get(f.Links.Last, page)
-}
+func (f *PostListPage) First() (*PostListPage, error) { return f.Links.get(f.Links.First) }
+func (f *PostListPage) Prev() (*PostListPage, error)  { return f.Links.get(f.Links.Prev) }
+func (f *PostListPage) Next() (*PostListPage, error)  { return f.Links.get(f.Links.Next) }
+func (f *PostListPage) Last() (*PostListPage, error)  { return f.Links.get(f.Links.Last) }

@@ -42,6 +42,11 @@ func (q *PostsFeedQuery) Types(types ...string) *PostsFeedQuery {
 	return q
 }
 
+func (q *PostsFeedQuery) MaxRefs(n int) *PostsFeedQuery {
+	q.Set("max_refs", strconv.Itoa(n))
+	return q
+}
+
 func (q *PostsFeedQuery) Mentions(mentions ...[]string) *PostsFeedQuery {
 	buf := &bytes.Buffer{}
 	for i, m := range mentions {

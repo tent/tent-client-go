@@ -134,7 +134,7 @@ func parsePostCreateRes(post *Post, res *http.Response) error {
 
 	var err error
 	if ok := timeoutRead(res.Body, func() {
-		err = json.NewDecoder(res.Body).Decode(post)
+		err = json.NewDecoder(res.Body).Decode(&PostEnvelope{Post: post})
 	}); !ok {
 		return newBadResponseError(ErrReadTimeout, res)
 	}
@@ -362,6 +362,7 @@ type BadResponseErrorType int
 const (
 	ErrBadStatusCode BadResponseErrorType = iota
 	ErrBadContentType
+	ErrBadData
 	ErrReadTimeout
 )
 

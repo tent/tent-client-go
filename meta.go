@@ -79,8 +79,8 @@ func GetMetaPost(url string) (*MetaPost, error) {
 	if err != nil {
 		return nil, err
 	}
-	metaPost := &MetaPost{Post: post}
-	err = json.Unmarshal(post.Content, metaPost)
+	metaPost := &MetaPost{Post: post.Post}
+	err = json.Unmarshal(post.Post.Content, metaPost)
 	return metaPost, err
 }
 

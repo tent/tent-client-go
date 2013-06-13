@@ -86,11 +86,12 @@ func GetMetaPost(url string) (*MetaPost, error) {
 
 func getMetaPost(links []string, reqURL *url.URL) (*MetaPost, error) {
 	for i, l := range links {
-		u, err := url.Parse(l)
+		// replace percent symbols with a private unicode character so that the url doesn't get decoded
+		u, err := url.Parse(strings.Replace(l, "%", "\uFFFE", -1))
 		if err != nil {
 			return nil, err
 		}
-		m, err := GetMetaPost(reqURL.ResolveReference(u).String())
+		m, err := GetMetaPost(strings.Replace(reqURL.ResolveReference(u).String(), "%EF%BF%BE", "%", -1))
 		if err != nil && i < len(links)-1 {
 			continue
 		}

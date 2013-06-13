@@ -175,8 +175,11 @@ func (client *Client) GetPost(entity, id, version string, r *PostRequest) (*Post
 		return u, nil
 	}
 	_, err := client.requestJSON("GET", urlFunc, header, nil, post)
-	if post.Post == nil {
-		return nil, newBadResponseError(ErrBadData, nil)
+	if err != nil || post.Post == nil {
+		if err == nil {
+			err = newBadResponseError(ErrBadData, nil)
+		}
+		return nil, err
 	}
 	post.Post.initAttachments(client)
 	for _, p := range post.Refs {

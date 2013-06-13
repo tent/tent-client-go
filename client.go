@@ -400,6 +400,12 @@ func (e *BadResponseError) Error() string {
 		return "tent: incorrect Content-Type received: " + strconv.Quote(e.Response.Header.Get("Content-Type"))
 	case ErrReadTimeout:
 		return "tent: timeout reading response body of " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+	case ErrBadData:
+		if e.Response != nil {
+			return "tent: bad post data returned from " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+		} else {
+			return "tent: bad post data"
+		}
 	default:
 		return "tent: unexpected " + strconv.Itoa(e.Response.StatusCode) + " performing " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
 	}

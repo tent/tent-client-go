@@ -56,11 +56,25 @@ func (urls *MetaPostServerURLs) PostURL(entity, post, version string) (string, e
 	return u, nil
 }
 
-func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, version, name string) string {
+func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, version, name string) (string, error) {
 	u := strings.Replace(urls.PostAttachment, "{entity}", url.QueryEscape(entity), 1)
 	u = strings.Replace(u, "{post}", post, 1)
 	u = strings.Replace(u, "{name}", url.QueryEscape(name), 1)
-	return strings.Replace(u, "{version}", version, 1)
+	if version != "" {
+		if strings.Contains(u, "?") {
+			uri, err := url.Parse(u)
+			if err != nil {
+				return "", err
+			}
+			q := uri.Query()
+			q.Add("version", version)
+			uri.RawQuery = q.Encode()
+			u = uri.String()
+		} else {
+			u += "?version=" + version
+		}
+	}
+	return u, nil
 }
 
 func (urls *MetaPostServerURLs) AttachmentURL(entity, digest string) string {

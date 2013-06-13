@@ -178,10 +178,10 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 
 func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
-		if version == "" {
-			version = "latest"
+		url, err := server.URLs.PostAttachmentURL(entity, post, version, name)
+		if err != nil {
+			return err
 		}
-		url := server.URLs.PostAttachmentURL(entity, post, version, name)
 		req, err := client.newRequest("GET", url, nil, nil)
 		if accept != "" {
 			req.Header.Set("Accept", accept)

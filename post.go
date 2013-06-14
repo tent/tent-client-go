@@ -134,6 +134,8 @@ type Post struct {
 	PublishedAt *UnixTime `json:"published_at,omitempty"`
 
 	Links []link.Link `json:"-"`
+
+	Notification bool `json:"-"`
 }
 
 type PostEnvelope struct {
@@ -249,7 +251,11 @@ func (post *Post) hasNewAttachments() bool {
 }
 
 func (post *Post) contentType() string {
-	return mime.FormatMediaType(MediaTypePost, map[string]string{"type": post.Type})
+	params := map[string]string{"type": post.Type}
+	if post.Notification {
+		params["rel"] = "https://tent.io/rels/notification"
+	}
+	return mime.FormatMediaType(MediaTypePost, params)
 }
 
 func (post *Post) initAttachments(client *Client) {

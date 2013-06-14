@@ -15,12 +15,6 @@ import (
 	"github.com/tent/http-link-go"
 )
 
-type Client struct {
-	Credentials *hawk.Credentials
-
-	Servers []MetaPostServer
-}
-
 const (
 	MediaTypePost         = "application/vnd.tent.post.v0+json"
 	MediaTypePostsFeed    = "application/vnd.tent.posts-feed.v0+json"
@@ -28,6 +22,24 @@ const (
 	MediaTypePostMentions = "application/vnd.tent.post-mentions.v0+json"
 	MediaTypePostChildren = "application/vnd.tent.post-children.v0+json"
 )
+
+type Client struct {
+	Credentials *hawk.Credentials
+
+	Servers []MetaPostServer
+}
+
+func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
+	creds, err := ParseCredentials(credsPost)
+	if err != nil {
+		return nil, err
+	}
+	meta, err := ParseMeta(metaContent)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{Credentials: creds, Servers: meta.Servers}, nil
+}
 
 func (client *Client) CreatePost(post *Post) error {
 	defer post.initAttachments(client)

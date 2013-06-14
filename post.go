@@ -235,7 +235,7 @@ func (post *Post) LinkedCredentials() (*hawk.Credentials, *Post, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	creds, err := CredentialsFromPost(p.Post)
+	creds, err := ParseCredentials(p.Post)
 	return creds, p.Post, err
 }
 
@@ -262,7 +262,7 @@ func (post *Post) initAttachments(client *Client) {
 	}
 }
 
-func CredentialsFromPost(post *Post) (*hawk.Credentials, error) {
+func ParseCredentials(post *Post) (*hawk.Credentials, error) {
 	creds := &hawk.Credentials{ID: post.ID, Hash: sha256.New}
 	temp := &Credentials{}
 	err := json.Unmarshal(post.Content, temp)

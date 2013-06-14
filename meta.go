@@ -93,9 +93,14 @@ func GetMetaPost(url string) (*MetaPost, error) {
 	if err != nil {
 		return nil, err
 	}
-	metaPost := &MetaPost{Post: post.Post}
-	err = json.Unmarshal(post.Post.Content, metaPost)
+	metaPost, err := ParseMeta(post.Post.Content)
+	metaPost.Post = post.Post
 	return metaPost, err
+}
+
+func ParseMeta(content []byte) (*MetaPost, error) {
+	meta := &MetaPost{}
+	return meta, json.Unmarshal(content, meta)
 }
 
 func getMetaPost(links []string, reqURL *url.URL) (*MetaPost, error) {

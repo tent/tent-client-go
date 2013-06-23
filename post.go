@@ -111,6 +111,10 @@ type PostVersion struct {
 	Post   string `json:"post,omitempty"`
 }
 
+type PostLicense struct {
+	URL string `json:"url"`
+}
+
 type Post struct {
 	ID string `json:"id,omitempty"`
 
@@ -124,7 +128,7 @@ type Post struct {
 
 	Refs        []PostRef         `json:"refs,omitempty"`
 	Mentions    []PostMention     `json:"mentions,omitempty"`
-	Licenses    []string          `json:"licenses,omitempty"`
+	Licenses    []PostLicense     `json:"licenses,omitempty"`
 	Attachments []*PostAttachment `json:"attachments,omitempty"`
 	Permissions *PostPermissions  `json:"permissions,omitempty"`
 

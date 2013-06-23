@@ -25,3 +25,5 @@ func (t *UnixTime) UnmarshalJSON(data []byte) error {
 	t.Time = time.Unix(0, i*int64(time.Millisecond))
 	return nil
 }
+
+func (t *UnixTime) UnixMillis() int64 { return t.Time.UnixNano() / int64(time.Millisecond) }

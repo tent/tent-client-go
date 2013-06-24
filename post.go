@@ -364,6 +364,11 @@ func SplitType(typ string) (base string, fragment string) {
 	return
 }
 
+func TypeBase(typ string) string {
+	base, _ := SplitType(typ)
+	return base
+}
+
 func ParseCredentials(post *Post) (*hawk.Credentials, error) {
 	creds := &hawk.Credentials{ID: post.ID, Hash: sha256.New}
 	temp := &Credentials{}

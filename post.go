@@ -355,6 +355,15 @@ func (post *Post) initAttachments(client *Client) {
 	}
 }
 
+func SplitType(typ string) (base string, fragment string) {
+	s := strings.SplitN(typ, "#", 2)
+	base = s[0]
+	if len(s) > 1 {
+		fragment = s[1]
+	}
+	return
+}
+
 func ParseCredentials(post *Post) (*hawk.Credentials, error) {
 	creds := &hawk.Credentials{ID: post.ID, Hash: sha256.New}
 	temp := &Credentials{}

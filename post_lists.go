@@ -28,7 +28,7 @@ type PostListPage struct {
 }
 
 type PageLinks struct {
-	First string `json:"firs,omitemptyt"`
+	First string `json:"first,omitempty"`
 	Prev  string `json:"prev,omitempty"`
 	Next  string `json:"next,omitempty"`
 	Last  string `json:"last,omitempty"`

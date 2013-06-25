@@ -90,7 +90,7 @@ func (perm *PostPermissions) Public() bool {
 }
 
 type PostApp struct {
-	Name string `json:"name,omitempty sfilter:"version""`
+	Name string `json:"name,omitempty" sfilter:"version"`
 	URL  string `json:"url,omitempty" sfilter:"version"`
 	ID   string `json:"id,omitempty"`
 }
@@ -103,7 +103,7 @@ type PostVersionParent struct {
 }
 
 type PostVersion struct {
-	ID          string              `json:"id,omitempty" sfilter:"version"`
+	ID          string              `json:"id,omitempty"`
 	Parents     []PostVersionParent `json:"parents,omitempty" sfilter:"version"`
 	Message     string              `json:"message,omitempty" sfilter:"version"`
 	PublishedAt *UnixTime           `json:"published_at,omitempty" sfilter:"version"`

@@ -20,18 +20,18 @@ type PageRequest struct {
 }
 
 type PostListPage struct {
-	Mentions []*PostMention `json:"mentions"`
-	Versions []*PostVersion `json:"versions"`
-	Posts    []*Post        `json:"posts"`
+	Mentions []*PostMention `json:"mentions,omitempty"`
+	Versions []*PostVersion `json:"versions,omitempty"`
+	Posts    []*Post        `json:"posts,omitempty"`
 	Links    PageLinks      `json:"pages"`
 	Header   PageHeader     `json:"-"`
 }
 
 type PageLinks struct {
-	First string `json:"first"`
-	Prev  string `json:"prev"`
-	Next  string `json:"next"`
-	Last  string `json:"last"`
+	First string `json:"firs,omitemptyt"`
+	Prev  string `json:"prev,omitempty"`
+	Next  string `json:"next,omitempty"`
+	Last  string `json:"last,omitempty"`
 
 	accept  string
 	baseURL *url.URL

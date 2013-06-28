@@ -14,7 +14,7 @@ func (t UnixTime) MarshalJSON() ([]byte, error) {
 	if t.IsZero() {
 		return []byte("0"), nil
 	}
-	return strconv.AppendInt(nil, t.UnixNano()/int64(time.Millisecond), 10), nil
+	return strconv.AppendInt(nil, t.UnixMillis(), 10), nil
 }
 
 func (t *UnixTime) UnmarshalJSON(data []byte) error {
@@ -26,4 +26,4 @@ func (t *UnixTime) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (t *UnixTime) UnixMillis() int64 { return t.Time.UnixNano() / int64(time.Millisecond) }
+func (t UnixTime) UnixMillis() int64 { return t.Time.UnixNano() / int64(time.Millisecond) }

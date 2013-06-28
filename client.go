@@ -34,7 +34,7 @@ func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta, err := ParseMeta(metaContent)
+	meta, err := ParseMeta(metaContent, nil)
 	if err != nil {
 		return nil, err
 	}

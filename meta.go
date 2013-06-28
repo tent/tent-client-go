@@ -84,8 +84,18 @@ func (urls *MetaPostServerURLs) AttachmentURL(entity, digest string) string {
 
 type MetaPost struct {
 	Entity  string           `json:"entity"`
+	Profile MetaProfile      `json:"profile"`
 	Servers []MetaPostServer `json:"servers"`
 	Post    *Post            `json:"-"`
+}
+
+type MetaProfile struct {
+	Name     string `json:"name,omitempty"`
+	Bio      string `json:"bio,omitempty"`
+	Website  string `json:"website,omitempty"`
+	Location string `json:"location,omitempty"`
+
+	AvatarDigest string `json:"avatar_digest,omitempty"`
 }
 
 func GetMetaPost(url string) (*MetaPost, error) {
@@ -93,14 +103,19 @@ func GetMetaPost(url string) (*MetaPost, error) {
 	if err != nil {
 		return nil, err
 	}
-	metaPost, err := ParseMeta(post.Post.Content)
+	metaPost, err := ParseMeta(post.Post.Content, post.Post.Attachments)
 	metaPost.Post = post.Post
 	return metaPost, err
 }
 
-func ParseMeta(content []byte) (*MetaPost, error) {
+func ParseMeta(content []byte, attachments []*PostAttachment) (*MetaPost, error) {
 	meta := &MetaPost{}
-	return meta, json.Unmarshal(content, meta)
+	err := json.Unmarshal(content, meta)
+	if len(attachments) > 0 {
+		// TODO: make this more strict
+		meta.Profile.AvatarDigest = attachments[0].Digest
+	}
+	return meta, err
 }
 
 func getMetaPost(links []string, reqURL *url.URL) (*MetaPost, error) {

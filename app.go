@@ -26,7 +26,7 @@ func NewAppPost(app *App) *Post {
 	return &Post{Type: PostTypeApp, Content: data, Permissions: &PostPermissions{PublicFlag: new(bool)}}
 }
 
-type AppPostTypes struct {
+type AppTypes struct {
 	Read  []string `json:"read,omitempty"`
 	Write []string `json:"write,omitempty"`
 }
@@ -37,11 +37,11 @@ type App struct {
 	Description string   `json:"description,omitempty"`
 	Scopes      []string `json:"scopes,omitempty"`
 
-	PostTypes AppPostTypes `json:"post_types,omitempty"`
+	Types AppTypes `json:"types,omitempty"`
 
-	RedirectURI           string   `json:"redirect_uri"`
-	NotificationURL       string   `json:"notification_url,omitempty"`
-	NotificationPostTypes []string `json:"notification_post_types,omitempty"`
+	RedirectURI       string   `json:"redirect_uri"`
+	NotificationURL   string   `json:"notification_url,omitempty"`
+	NotificationTypes []string `json:"notification_types,omitempty"`
 
 	Post *Post `json:"-"`
 }
@@ -50,7 +50,7 @@ type AppAuth struct {
 	Active bool     `json:"active"`
 	Scopes []string `json:"scopes,omitempty"`
 
-	PostTypes AppPostTypes `json:"post_types,omitempty"`
+	Types AppTypes `json:"types,omitempty"`
 
 	Post *Post `json:"-"`
 }

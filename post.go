@@ -187,7 +187,7 @@ func (client *Client) GetPost(entity, id, version string, r *PostRequest) (*Post
 	_, err := client.requestJSON("GET", urlFunc, header, nil, post)
 	if err != nil || post.Post == nil {
 		if err == nil {
-			err = newBadResponseError(ErrBadData, nil)
+			err = newResponseError(ErrBadData, nil)
 		}
 		return nil, err
 	}
@@ -206,21 +206,21 @@ func GetPost(url string) (*PostEnvelope, error) {
 	req.Header.Set("Accept", MediaTypePost)
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, newRequestError(err, req)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, newBadResponseError(ErrBadStatusCode, res)
+		return nil, newResponseError(ErrBadStatusCode, res)
 	}
 
 	post := &PostEnvelope{}
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(post)
 	}); !ok {
-		return nil, newBadResponseError(ErrReadTimeout, res)
+		return nil, newResponseError(ErrReadTimeout, res)
 	}
 	if post.Post == nil {
-		return nil, newBadResponseError(ErrBadData, res)
+		return nil, newResponseError(ErrBadData, res)
 	}
 	c := &Client{}
 	post.Post.initAttachments(c)

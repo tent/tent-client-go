@@ -120,7 +120,7 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 	}
 	resHeader, err := client.requestJSON("GET", urlFunc, header, nil, page)
 	if err != nil {
-		if resErr, ok := err.(*BadResponseError); ok && resErr.Type == ErrBadStatusCode && resErr.Response.StatusCode == 304 {
+		if resErr, ok := err.(*ResponseError); ok && resErr.Type == ErrBadStatusCode && resErr.Response.StatusCode == 304 {
 			page.Header.ETag = resHeader.Get("Etag")
 			page.Header.NotModified = true
 			return page, nil

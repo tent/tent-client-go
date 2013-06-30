@@ -3,6 +3,7 @@ package tent
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"net"
@@ -95,10 +96,10 @@ func (client *Client) createPostWithAttachments(post *Post) error {
 
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return err
+		return newRequestError(err, req)
 	}
 	if err = <-errChan; err != nil {
-		return err
+		return newRequestError(err, req)
 	}
 
 	return parsePostCreateRes(post, res)
@@ -125,7 +126,7 @@ func (client *Client) createPost(post *Post) error {
 	}
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return err
+		return newRequestError(err, req)
 	}
 	return parsePostCreateRes(post, res)
 }
@@ -133,7 +134,7 @@ func (client *Client) createPost(post *Post) error {
 func parsePostCreateRes(post *Post, res *http.Response) error {
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return newBadResponseError(ErrBadStatusCode, res)
+		return newResponseError(ErrBadStatusCode, res)
 	}
 
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
@@ -148,7 +149,7 @@ func parsePostCreateRes(post *Post, res *http.Response) error {
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(&PostEnvelope{Post: post})
 	}); !ok {
-		return newBadResponseError(ErrReadTimeout, res)
+		return newResponseError(ErrReadTimeout, res)
 	}
 	return err
 }
@@ -177,10 +178,10 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 		}
 		res, err := HTTP.Do(req)
 		if err != nil {
-			return err
+			return newRequestError(err, req)
 		}
 		if res.StatusCode != 200 {
-			return newBadResponseError(ErrBadStatusCode, res)
+			return newResponseError(ErrBadStatusCode, res)
 		}
 		body = res.Body
 		return nil
@@ -203,10 +204,10 @@ func (client *Client) GetPostAttachment(entity, post, version, name, accept stri
 		}
 		res, err := HTTP.Do(req)
 		if err != nil {
-			return err
+			return newRequestError(err, req)
 		}
 		if res.StatusCode != 200 {
-			return newBadResponseError(ErrBadStatusCode, res)
+			return newResponseError(ErrBadStatusCode, res)
 		}
 		body = res.Body
 		return nil
@@ -272,16 +273,16 @@ func (client *Client) requestJSONURL(method string, url string, header http.Head
 	}
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, newRequestError(err, req)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, newBadResponseError(ErrBadStatusCode, res)
+		return nil, newResponseError(ErrBadStatusCode, res)
 	}
 	if ok := timeoutRead(res.Body, func() {
 		err = json.NewDecoder(res.Body).Decode(data)
 	}); !ok {
-		return nil, newBadResponseError(ErrReadTimeout, res)
+		return nil, newResponseError(ErrReadTimeout, res)
 	}
 	return res.Header, err
 }
@@ -301,7 +302,7 @@ func (client *Client) requestCount(urlFunc urlFunc, header http.Header) (PageHea
 		}
 		res, err := HTTP.Do(req)
 		if err != nil {
-			return err
+			return newRequestError(err, req)
 		}
 		res.Body.Close()
 		if res.StatusCode == 304 {
@@ -310,7 +311,7 @@ func (client *Client) requestCount(urlFunc urlFunc, header http.Header) (PageHea
 			return nil
 		}
 		if res.StatusCode != 200 {
-			return newBadResponseError(ErrBadStatusCode, res)
+			return newResponseError(ErrBadStatusCode, res)
 		}
 		h.Count, _ = strconv.Atoi(res.Header.Get("Count"))
 		return nil
@@ -369,17 +370,34 @@ func newRequest(method, url string, header http.Header, body io.Reader) (*http.R
 	return req, nil
 }
 
-type BadResponseErrorType int
+type RequestError struct {
+	Err     error
+	Request *http.Request
+}
+
+func newRequestError(err error, req *http.Request) *RequestError {
+	return &RequestError{Err: err, Request: req}
+}
+
+func (e *RequestError) Error() string {
+	if e.Request != nil {
+		return fmt.Sprintf("tent: error requesting %s %s: %s", e.Request.Method, e.Request.URL, e.Err.Error())
+	} else {
+		return "tent: request error: " + e.Err.Error()
+	}
+}
+
+type ResponseErrorType int
 
 const (
-	ErrBadStatusCode BadResponseErrorType = iota
+	ErrBadStatusCode ResponseErrorType = iota
 	ErrBadContentType
 	ErrBadData
 	ErrReadTimeout
 )
 
-type BadResponseError struct {
-	Type      BadResponseErrorType
+type ResponseError struct {
+	Type      ResponseErrorType
 	Response  *http.Response
 	TentError *TentError
 }
@@ -391,8 +409,8 @@ type TentError struct {
 
 const MediaTypeError = "application/vnd.tent.error.v0+json"
 
-func newBadResponseError(typ BadResponseErrorType, res *http.Response) *BadResponseError {
-	err := &BadResponseError{Type: typ, Response: res}
+func newResponseError(typ ResponseErrorType, res *http.Response) *ResponseError {
+	err := &ResponseError{Type: typ, Response: res}
 
 	// try to decode an error message from the body
 	if typ == ErrBadStatusCode {
@@ -406,19 +424,19 @@ func newBadResponseError(typ BadResponseErrorType, res *http.Response) *BadRespo
 	return err
 }
 
-func (e *BadResponseError) Error() string {
+func (e *ResponseError) Error() string {
 	switch e.Type {
 	case ErrBadContentType:
-		return "tent: incorrect Content-Type received: " + strconv.Quote(e.Response.Header.Get("Content-Type"))
-	case ErrReadTimeout:
-		return "tent: timeout reading response body of " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+		return fmt.Sprintf("tent: incorrect Content-Type received: %q", e.Response.Header.Get("Content-Type"))
 	case ErrBadData:
 		if e.Response != nil {
-			return "tent: bad post data returned from " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+			return fmt.Sprintf("tent: bad post data returned from %s %s", e.Response.Request.Method, e.Response.Request.URL)
 		} else {
 			return "tent: bad post data"
 		}
+	case ErrReadTimeout:
+		return fmt.Sprintf("tent: timeout reading response body of %s %s", e.Response.Request.Method, e.Response.Request.URL)
 	default:
-		return "tent: unexpected " + strconv.Itoa(e.Response.StatusCode) + " performing " + e.Response.Request.Method + " " + e.Response.Request.URL.String()
+		return fmt.Sprintf("tent: unexpected %d performing %s %s", e.Response.StatusCode, e.Response.Request.Method, e.Response.Request.URL)
 	}
 }

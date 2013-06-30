@@ -16,11 +16,11 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 	res, err := HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, newRequestError(err, req)
 	}
 	res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, newBadResponseError(ErrBadStatusCode, res)
+		return nil, newResponseError(ErrBadStatusCode, res)
 	}
 
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
@@ -44,29 +44,29 @@ func Discover(entity string) (*MetaPost, error) {
 	req.Header.Set("Accept", "text/html")
 	res, err = HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, newRequestError(err, req)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil, newBadResponseError(ErrBadStatusCode, res)
+		return nil, newResponseError(ErrBadStatusCode, res)
 	}
 	contentType := res.Header.Get("Content-Type")
 	if contentType == "" {
-		return nil, newBadResponseError(ErrBadContentType, res)
+		return nil, newResponseError(ErrBadContentType, res)
 	}
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return nil, err
 	}
 	if mediaType != "text/html" {
-		return nil, newBadResponseError(ErrBadContentType, res)
+		return nil, newResponseError(ErrBadContentType, res)
 	}
 
 	var links []string
 	if ok := timeoutRead(res.Body, func() {
 		links, err = parseHTMLMetaLinks(res.Body)
 	}); !ok {
-		return nil, newBadResponseError(ErrReadTimeout, res)
+		return nil, newResponseError(ErrReadTimeout, res)
 	}
 	if err != nil {
 		return nil, err

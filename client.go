@@ -51,10 +51,7 @@ func (client *Client) CreatePost(post *Post) error {
 }
 
 func (client *Client) createPostWithAttachments(post *Post) error {
-	method, uri, err := client.postCreateURL(post)
-	if err != nil {
-		return err
-	}
+	method, uri := client.postCreateURL(post)
 	req, err := client.newRequest(method, uri, nil, nil)
 	if err != nil {
 		return err
@@ -110,10 +107,7 @@ func (client *Client) createPost(post *Post) error {
 	if err != nil {
 		return err
 	}
-	method, uri, err := client.postCreateURL(post)
-	if err != nil {
-		return err
-	}
+	method, uri := client.postCreateURL(post)
 	header := make(http.Header)
 	header.Set("Content-Type", post.contentType())
 	if len(post.Links) > 0 {
@@ -154,15 +148,12 @@ func parsePostCreateRes(post *Post, res *http.Response) error {
 	return err
 }
 
-func (client *Client) postCreateURL(post *Post) (method string, uri string, err error) {
+func (client *Client) postCreateURL(post *Post) (method string, uri string) {
 	if post.ID == "" {
 		method, uri = "POST", client.Servers[0].URLs.NewPost
 	} else {
 		method = "PUT"
-		uri, err = client.Servers[0].URLs.PostURL(post.Entity, post.ID, "")
-		if err != nil {
-			return
-		}
+		uri = client.Servers[0].URLs.PostURL(post.Entity, post.ID, "")
 		post.Entity = ""
 		post.ID = ""
 	}
@@ -192,10 +183,7 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 
 func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, header http.Header, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
-		url, err := server.URLs.PostAttachmentURL(entity, post, version, name)
-		if err != nil {
-			return err
-		}
+		url := server.URLs.PostAttachmentURL(entity, post, version, name)
 		req, err := client.newRequest("GET", url, nil, nil)
 		if accept != "" {
 			req.Header.Set("Accept", accept)
@@ -259,11 +247,7 @@ func (client *Client) newRequest(method, url string, header http.Header, body []
 
 func (client *Client) requestJSON(method string, url urlFunc, reqHeader http.Header, body []byte, data interface{}) (header http.Header, err error) {
 	return header, client.Request(func(server *MetaPostServer) error {
-		uri, err := url(server)
-		if err != nil {
-			return err
-		}
-		header, err = client.requestJSONURL(method, uri, reqHeader, body, data)
+		header, err = client.requestJSONURL(method, url(server), reqHeader, body, data)
 		return err
 	})
 }
@@ -289,16 +273,12 @@ func (client *Client) requestJSONURL(method string, url string, header http.Head
 	return res.Header, err
 }
 
-type urlFunc func(server *MetaPostServer) (string, error)
+type urlFunc func(server *MetaPostServer) string
 
 func (client *Client) requestCount(urlFunc urlFunc, header http.Header) (PageHeader, error) {
 	h := PageHeader{}
 	err := client.Request(func(server *MetaPostServer) error {
-		url, err := urlFunc(server)
-		if err != nil {
-			return err
-		}
-		req, err := client.newRequest("HEAD", url, header, nil)
+		req, err := client.newRequest("HEAD", urlFunc(server), header, nil)
 		if err != nil {
 			return err
 		}

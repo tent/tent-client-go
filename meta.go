@@ -27,59 +27,39 @@ type MetaPostServerURLs struct {
 	ServerInfo     string `json:"server_info"`
 }
 
-func (urls *MetaPostServerURLs) OAuthURL(appID string, state string) (string, error) {
-	u, err := url.Parse(urls.OAuthAuth)
-	if err != nil {
-		return "", err
-	}
-	u.RawQuery = url.Values{"client_id": {appID}, "state": {state}}.Encode()
-	return u.String(), nil
+func (urls *MetaPostServerURLs) OAuthURL(appID string, state string) string {
+	return appendQuery(urls.OAuthAuth, url.Values{"client_id": {appID}, "state": {state}}.Encode())
 }
 
-func (urls *MetaPostServerURLs) PostURL(entity, post, version string) (string, error) {
+func (urls *MetaPostServerURLs) PostURL(entity, post, version string) string {
 	u := strings.Replace(urls.Post, "{entity}", url.QueryEscape(entity), 1)
 	u = strings.Replace(u, "{post}", post, 1)
 	if version != "" {
-		if strings.Contains(u, "?") {
-			uri, err := url.Parse(u)
-			if err != nil {
-				return "", err
-			}
-			q := uri.Query()
-			q.Add("version", version)
-			uri.RawQuery = q.Encode()
-			u = uri.String()
-		} else {
-			u += "?version=" + version
-		}
+		u = appendQuery(u, "version="+version)
 	}
-	return u, nil
+	return u
 }
 
-func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, version, name string) (string, error) {
+func (urls *MetaPostServerURLs) PostAttachmentURL(entity, post, version, name string) string {
 	u := strings.Replace(urls.PostAttachment, "{entity}", url.QueryEscape(entity), 1)
 	u = strings.Replace(u, "{post}", post, 1)
 	u = strings.Replace(u, "{name}", url.QueryEscape(name), 1)
 	if version != "" {
-		if strings.Contains(u, "?") {
-			uri, err := url.Parse(u)
-			if err != nil {
-				return "", err
-			}
-			q := uri.Query()
-			q.Add("version", version)
-			uri.RawQuery = q.Encode()
-			u = uri.String()
-		} else {
-			u += "?version=" + version
-		}
+		u = appendQuery(u, "version="+version)
 	}
-	return u, nil
+	return u
 }
 
 func (urls *MetaPostServerURLs) AttachmentURL(entity, digest string) string {
 	u := strings.Replace(urls.Attachment, "{entity}", url.QueryEscape(entity), 1)
 	return strings.Replace(u, "{digest}", digest, 1)
+}
+
+func appendQuery(url, query string) string {
+	if strings.Contains(url, "?") {
+		return url + "&" + query
+	}
+	return url + "?" + query
 }
 
 type MetaPost struct {

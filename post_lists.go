@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type PageHeader struct {
@@ -34,7 +35,7 @@ type PageLinks struct {
 	Last  string `json:"last,omitempty"`
 
 	accept  string
-	baseURL *url.URL
+	baseURL string
 	client  *Client
 }
 
@@ -43,10 +44,10 @@ func (links *PageLinks) get(query string) (*PostListPage, error) {
 		return nil, ErrNoPage
 	}
 	page := &PostListPage{Links: PageLinks{accept: links.accept, baseURL: links.baseURL, client: links.client}}
-	links.baseURL.RawQuery = query[1:]
+	links.baseURL = strings.SplitN(links.baseURL, "?", 2)[0] + query
 	header := make(http.Header)
 	header.Set("Accept", links.accept)
-	_, err := links.client.requestJSONURL("GET", links.baseURL.String(), header, nil, page)
+	_, err := links.client.requestJSONURL("GET", links.baseURL, header, nil, page)
 	if err != nil {
 		return nil, err
 	}
@@ -82,23 +83,19 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 		limit = r.Limit
 	}
 	page := &PostListPage{}
-	urlFunc := func(server *MetaPostServer) (string, error) {
+	urlFunc := func(server *MetaPostServer) string {
 		var pu string
-		var err error
 		if mediaType == MediaTypePostsFeed {
 			pu = server.URLs.PostsFeed
 		} else {
-			pu, err = server.URLs.PostURL(entity, post, version)
+			pu = server.URLs.PostURL(entity, post, version)
 		}
-		if err != nil {
-			return "", err
-		}
-		u, err := url.Parse(pu)
-		if err != nil {
-			return "", err
-		}
-		page.Links.baseURL = u
+		page.Links.baseURL = pu
 		if len(query) > 0 || limit > 0 {
+			u, err := url.Parse(pu)
+			if err != nil {
+				return pu
+			}
 			uq := u.Query()
 			for k, v := range query {
 				uq[k] = v
@@ -106,9 +103,9 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 			if limit > 0 {
 				uq.Set("limit", strconv.Itoa(limit))
 			}
-			u.RawQuery = uq.Encode()
+			appendQuery(pu, uq.Encode())
 		}
-		return u.String(), nil
+		return pu
 	}
 	if r != nil && r.ETag != "" {
 		header.Set("If-None-Match", r.ETag)

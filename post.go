@@ -9,7 +9,6 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -163,26 +162,12 @@ func (client *Client) GetPost(entity, id, version string, r *PostRequest) (*Post
 	post := &PostEnvelope{}
 	header := make(http.Header)
 	header.Set("Accept", MediaTypePost)
-	urlFunc := func(server *MetaPostServer) (string, error) {
-		u, err := server.URLs.PostURL(entity, id, version)
-		if err != nil {
-			return "", err
-		}
+	urlFunc := func(server *MetaPostServer) string {
+		u := server.URLs.PostURL(entity, id, version)
 		if r != nil && r.MaxRefs > 0 {
-			if strings.Contains(u, "?") {
-				uri, err := url.Parse(u)
-				if err != nil {
-					return "", err
-				}
-				q := uri.Query()
-				q.Add("max_refs", strconv.Itoa(r.MaxRefs))
-				uri.RawQuery = q.Encode()
-				u = uri.String()
-			} else {
-				u += "?max_refs=" + strconv.Itoa(r.MaxRefs)
-			}
+			u = appendQuery(u, "max_refs="+strconv.Itoa(r.MaxRefs))
 		}
-		return u, nil
+		return u
 	}
 	_, err := client.requestJSON("GET", urlFunc, header, nil, post)
 	if err != nil || post.Post == nil {

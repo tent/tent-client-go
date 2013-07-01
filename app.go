@@ -57,7 +57,7 @@ type AppAuth struct {
 
 const TokenTypeHawk = "https://tent.io/oauth/hawk-token"
 
-func oauthTokenURL(server *MetaPostServer) (string, error) { return server.URLs.OAuthToken, nil }
+func oauthTokenURL(server *MetaPostServer) string { return server.URLs.OAuthToken }
 
 func (client *Client) RequestAccessToken(code string) (*hawk.Credentials, error) {
 	data, _ := json.Marshal(&AccessTokenRequest{TokenType: TokenTypeHawk, Code: code})

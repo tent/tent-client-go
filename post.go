@@ -50,7 +50,7 @@ type PostAttachment struct {
 	// Include Data to upload a new attachment with the post
 	Data ReadLenSeeker `json:"-"`
 
-	entity string `json:"-"`
+	entity string
 	body   io.ReadCloser
 	client *Client
 }
@@ -64,7 +64,7 @@ func (att *PostAttachment) Read(p []byte) (int, error) {
 	}
 	if att.body == nil {
 		var err error
-		att.body, err = att.client.GetAttachment(att.entity, att.Digest)
+		att.body, _, err = att.client.GetAttachment(att.entity, att.Digest)
 		if err != nil {
 			return 0, err
 		}

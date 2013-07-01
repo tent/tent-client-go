@@ -169,7 +169,7 @@ func (client *Client) postCreateURL(post *Post) (method string, uri string, err 
 	return
 }
 
-func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, err error) {
+func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, header http.Header, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
 		url := server.URLs.AttachmentURL(entity, digest)
 		req, err := client.newRequest("GET", url, nil, nil)
@@ -184,12 +184,13 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 			return newResponseError(ErrBadStatusCode, res)
 		}
 		body = res.Body
+		header = res.Header
 		return nil
 	})
 	return
 }
 
-func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, err error) {
+func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, header http.Header, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
 		url, err := server.URLs.PostAttachmentURL(entity, post, version, name)
 		if err != nil {
@@ -210,6 +211,7 @@ func (client *Client) GetPostAttachment(entity, post, version, name, accept stri
 			return newResponseError(ErrBadStatusCode, res)
 		}
 		body = res.Body
+		header = res.Header
 		return nil
 	})
 	return

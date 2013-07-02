@@ -52,7 +52,7 @@ func (client *Client) CreatePost(post *Post) error {
 
 func (client *Client) createPostWithAttachments(post *Post) error {
 	method, uri := client.postCreateURL(post)
-	req, err := client.newRequest(method, uri, nil, nil)
+	req, err := client.NewRequest(method, uri, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (client *Client) createPost(post *Post) error {
 		header.Set("Link", link.Format(post.Links))
 		post.Links = nil
 	}
-	req, err := client.newRequest(method, uri, header, data)
+	req, err := client.NewRequest(method, uri, header, data)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func (client *Client) postCreateURL(post *Post) (method string, uri string) {
 func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, header http.Header, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
 		url := server.URLs.AttachmentURL(entity, digest)
-		req, err := client.newRequest("GET", url, nil, nil)
+		req, err := client.NewRequest("GET", url, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func (client *Client) GetAttachment(entity, digest string) (body io.ReadCloser, 
 func (client *Client) GetPostAttachment(entity, post, version, name, accept string) (body io.ReadCloser, header http.Header, err error) {
 	err = client.Request(func(server *MetaPostServer) error {
 		url := server.URLs.PostAttachmentURL(entity, post, version, name)
-		req, err := client.newRequest("GET", url, nil, nil)
+		req, err := client.NewRequest("GET", url, nil, nil)
 		if accept != "" {
 			req.Header.Set("Accept", accept)
 		}
@@ -230,12 +230,12 @@ func (client *Client) SignRequest(req *http.Request, body []byte) {
 	req.Header.Set("Authorization", auth.RequestHeader())
 }
 
-func (client *Client) newRequest(method, url string, header http.Header, body []byte) (*http.Request, error) {
+func (client *Client) NewRequest(method, url string, header http.Header, body []byte) (*http.Request, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		bodyReader = bytes.NewReader(body)
 	}
-	req, err := newRequest(method, url, header, bodyReader)
+	req, err := NewRequest(method, url, header, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (client *Client) requestJSON(method string, url urlFunc, reqHeader http.Hea
 }
 
 func (client *Client) requestJSONURL(method string, url string, header http.Header, body []byte, data interface{}) (http.Header, error) {
-	req, err := client.newRequest(method, url, header, body)
+	req, err := client.NewRequest(method, url, header, body)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ type urlFunc func(server *MetaPostServer) string
 func (client *Client) requestCount(urlFunc urlFunc, header http.Header) (PageHeader, error) {
 	h := PageHeader{}
 	err := client.Request(func(server *MetaPostServer) error {
-		req, err := client.newRequest("HEAD", urlFunc(server), header, nil)
+		req, err := client.NewRequest("HEAD", urlFunc(server), header, nil)
 		if err != nil {
 			return err
 		}
@@ -334,7 +334,7 @@ func timeoutRead(body io.Closer, read func()) (ok bool) {
 	}
 }
 
-func newRequest(method, url string, header http.Header, body io.Reader) (*http.Request, error) {
+func NewRequest(method, url string, header http.Header, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err

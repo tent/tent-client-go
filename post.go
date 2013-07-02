@@ -184,7 +184,7 @@ func (client *Client) GetPost(entity, id, version string, r *PostRequest) (*Post
 }
 
 func GetPost(url string) (*PostEnvelope, error) {
-	req, err := newRequest("GET", url, nil, nil)
+	req, err := NewRequest("GET", url, nil, nil)
 	if err != nil {
 		return nil, err
 	}

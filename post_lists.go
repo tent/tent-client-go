@@ -103,7 +103,7 @@ func (client *Client) getPostListPage(entity, post, version, mediaType string, r
 			if limit > 0 {
 				uq.Set("limit", strconv.Itoa(limit))
 			}
-			appendQuery(pu, uq.Encode())
+			pu = appendQuery(pu, uq.Encode())
 		}
 		return pu
 	}

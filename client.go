@@ -341,7 +341,7 @@ func NewRequest(method, url string, header http.Header, body io.Reader) (*http.R
 	}
 	if req.URL.Path != "" {
 		// url.Parse unescapes the Path, which can screw with some of the signing stuff
-		req.URL.Opaque = strings.SplitN(url, ":", 2)[1]
+		req.URL.Opaque = "/" + strings.SplitN(url[8:], "/", 2)[1]
 		req.URL.Path = ""
 		req.URL.RawQuery = ""
 	}

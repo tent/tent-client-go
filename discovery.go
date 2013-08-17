@@ -2,12 +2,15 @@ package tent
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"mime"
 
 	"code.google.com/p/go.net/html"
 	"github.com/tent/http-link-go"
 )
+
+var ErrNotTentEntity = errors.New("tent: not a valid Tent entity")
 
 func Discover(entity string) (*MetaPost, error) {
 	req, err := NewRequest("HEAD", entity, nil, nil)
@@ -52,14 +55,14 @@ func Discover(entity string) (*MetaPost, error) {
 	}
 	contentType := res.Header.Get("Content-Type")
 	if contentType == "" {
-		return nil, newResponseError(ErrBadContentType, res)
+		return nil, ErrNotTentEntity
 	}
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return nil, err
 	}
 	if mediaType != "text/html" {
-		return nil, newResponseError(ErrBadContentType, res)
+		return nil, ErrNotTentEntity
 	}
 
 	var links []string
@@ -75,7 +78,7 @@ func Discover(entity string) (*MetaPost, error) {
 		return getMetaPost(links, res.Request.URL)
 	}
 
-	return nil, nil
+	return nil, ErrNotTentEntity
 }
 
 func parseHTMLMetaLinks(data io.Reader) (links []string, err error) {

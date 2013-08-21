@@ -69,6 +69,17 @@ type MetaPost struct {
 	Post    *Post            `json:"-"`
 }
 
+func (meta *MetaPost) HTTPSOnly() bool {
+	v := func(s string) bool { return !strings.HasPrefix(s, "https://") }
+	for _, s := range meta.Servers {
+		if v(s.URLs.OAuthAuth) || v(s.URLs.OAuthToken) || v(s.URLs.PostsFeed) || v(s.URLs.Post) || v(s.URLs.NewPost) ||
+			v(s.URLs.PostAttachment) || v(s.URLs.Attachment) || v(s.URLs.Batch) || v(s.URLs.ServerInfo) {
+			return false
+		}
+	}
+	return true
+}
+
 type MetaProfile struct {
 	Name     string `json:"name,omitempty"`
 	Bio      string `json:"bio,omitempty"`

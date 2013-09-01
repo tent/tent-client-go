@@ -11,6 +11,7 @@ import (
 )
 
 var ErrNotTentEntity = errors.New("tent: not a valid Tent entity")
+var ErrInvalidLink = errors.New("tent: invalid meta Link")
 
 func Discover(entity string) (*MetaPost, error) {
 	req, err := NewRequest("HEAD", entity, nil, nil)
@@ -29,7 +30,7 @@ func Discover(entity string) (*MetaPost, error) {
 	if linkHeader := res.Header.Get("Link"); linkHeader != "" {
 		links, err := link.Parse(linkHeader)
 		if err != nil {
-			return nil, err
+			return nil, ErrInvalidLink
 		}
 		var metaLinks []string
 		for _, l := range links {

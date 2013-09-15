@@ -243,7 +243,7 @@ func (post *Post) hasNewAttachments() bool {
 	return false
 }
 
-func (post *Post) CalculateVersion() (string, error) {
+func (post *Post) CalculateVersion() (string, []byte, error) {
 	data, _ := sfilter.Map(post, "version")
 
 	if post.OriginalEntity != "" {
@@ -257,17 +257,14 @@ func (post *Post) CalculateVersion() (string, error) {
 			if !mention.Public() {
 				continue
 			}
-			if mention.Entity == post.Entity {
-				delete(postMentions[i], "entity")
-			}
 			if mention.Post == post.ID {
 				delete(postMentions[i], "post")
 			}
-			if mention.OriginalEntity != "" && post.OriginalEntity != mention.OriginalEntity {
+			if mention.OriginalEntity != "" {
 				postMentions[i]["entity"] = mention.OriginalEntity
 			}
-			if len(postMentions[i]) == 0 {
-				continue
+			if data["entity"] == postMentions[i]["entity"] {
+				delete(postMentions[i], "entity")
 			}
 			mentions = append(mentions, postMentions[i])
 		}
@@ -280,14 +277,14 @@ func (post *Post) CalculateVersion() (string, error) {
 	if data["refs"] != nil {
 		refs := data["refs"].([]map[string]interface{})
 		for i, ref := range post.Refs {
-			if ref.Entity == post.Entity {
-				delete(refs[i], "entity")
-			}
 			if ref.Post == post.ID {
 				delete(refs[i], "post")
 			}
-			if ref.OriginalEntity != "" && post.OriginalEntity != ref.OriginalEntity {
+			if ref.OriginalEntity != "" {
 				refs[i]["entity"] = ref.OriginalEntity
+			}
+			if data["entity"] == refs[i]["entity"] {
+				delete(refs[i], "entity")
 			}
 		}
 	}
@@ -296,14 +293,14 @@ func (post *Post) CalculateVersion() (string, error) {
 		version := data["version"].(map[string]interface{})
 		parents := version["parents"].([]map[string]interface{})
 		for i, parent := range post.Version.Parents {
-			if parent.Entity == post.Entity {
-				delete(parents[i], "entity")
-			}
 			if parent.Post == post.ID {
 				delete(parents[i], "post")
 			}
-			if parent.OriginalEntity != "" && post.OriginalEntity != parent.OriginalEntity {
+			if parent.OriginalEntity != "" {
 				parents[i]["entity"] = parent.OriginalEntity
+			}
+			if data["entity"] == parents[i]["entity"] {
+				delete(parents[i], "entity")
 			}
 		}
 	}
@@ -314,12 +311,12 @@ func (post *Post) CalculateVersion() (string, error) {
 
 	canonicalJSON, err := cjson.Marshal(data)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	h := sha512.New()
 	h.Write(canonicalJSON)
-	return hex.EncodeToString(h.Sum(nil)[:32]), nil
+	return "sha512t256-" + hex.EncodeToString(h.Sum(nil)[:32]), canonicalJSON, nil
 }
 
 func (post *Post) contentType() string {

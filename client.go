@@ -419,6 +419,10 @@ func (e *ResponseError) Error() string {
 	case ErrReadTimeout:
 		return fmt.Sprintf("tent: timeout reading response body of %s %s", e.Response.Request.Method, e.Response.Request.URL)
 	default:
-		return fmt.Sprintf("tent: unexpected %d performing %s %s", e.Response.StatusCode, e.Response.Request.Method, e.Response.Request.URL)
+		msg := fmt.Sprintf("tent: unexpected %d performing %s %s", e.Response.StatusCode, e.Response.Request.Method, e.Response.Request.URL)
+		if e.TentError != nil {
+			msg += " - " + e.TentError.Error
+		}
+		return msg
 	}
 }

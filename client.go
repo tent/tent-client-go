@@ -28,6 +28,8 @@ type Client struct {
 	Credentials *hawk.Credentials
 
 	Servers []MetaPostServer
+
+	Entity string
 }
 
 func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
@@ -39,7 +41,7 @@ func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{Credentials: creds, Servers: meta.Servers}, nil
+	return &Client{Credentials: creds, Servers: meta.Servers, Entity: meta.Entity}, nil
 }
 
 func (client *Client) CreatePost(post *Post) error {

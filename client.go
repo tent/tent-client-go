@@ -28,6 +28,8 @@ type Client struct {
 	Credentials *hawk.Credentials
 
 	Servers []MetaPostServer
+
+	Entity string
 }
 
 func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
@@ -39,7 +41,7 @@ func NewClient(credsPost *Post, metaContent []byte) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{Credentials: creds, Servers: meta.Servers}, nil
+	return &Client{Credentials: creds, Servers: meta.Servers, Entity: meta.Entity}, nil
 }
 
 func (client *Client) CreatePost(post *Post) error {
@@ -99,7 +101,7 @@ func (client *Client) createPostWithAttachments(post *Post) error {
 		return newRequestError(err, req)
 	}
 
-	return parsePostCreateRes(post, res)
+	return parsePostRes(post, res)
 }
 
 func (client *Client) createPost(post *Post) error {
@@ -122,10 +124,10 @@ func (client *Client) createPost(post *Post) error {
 	if err != nil {
 		return newRequestError(err, req)
 	}
-	return parsePostCreateRes(post, res)
+	return parsePostRes(post, res)
 }
 
-func parsePostCreateRes(post *Post, res *http.Response) error {
+func parsePostRes(post *Post, res *http.Response) error {
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		return newResponseError(ErrBadStatusCode, res)
@@ -203,6 +205,27 @@ func (client *Client) GetPostAttachment(entity, post, version, name, accept stri
 		return nil
 	})
 	return
+}
+
+func (client *Client) DeletePost(id, version string, createDeletePost bool) (*Post, error) {
+	post := &Post{}
+	return post, client.Request(func(server *MetaPostServer) error {
+		url := server.URLs.PostURL(client.Entity, id, version)
+		header := make(http.Header)
+		if !createDeletePost {
+			header.Set("Create-Delete-Post", "false")
+		}
+
+		req, err := client.NewRequest("DELETE", url, header, nil)
+		if err != nil {
+			return err
+		}
+		res, err := HTTP.Do(req)
+		if err != nil {
+			return newRequestError(err, req)
+		}
+		return parsePostRes(post, res)
+	})
 }
 
 func (client *Client) Request(req func(*MetaPostServer) error) error {

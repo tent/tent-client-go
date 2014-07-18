@@ -63,6 +63,28 @@ func (q *PostsFeedQuery) Mentions(mentions ...[]string) *PostsFeedQuery {
 	return q
 }
 
+type SortOrder int
+
+const (
+	ReceivedAt SortOrder = iota
+	PublishedAt
+	VersionReceivedAt
+	VersionPublishedAt
+)
+
+var sortOrderName = [...]string{
+	"received_at", "published_at", "version.received_at", "version.published_at",
+}
+
+func (s SortOrder) String() string {
+	return sortOrderName[s]
+}
+
+func (q *PostsFeedQuery) SortBy(order SortOrder) *PostsFeedQuery {
+	q.Set("sort_by", order.String())
+	return q
+}
+
 func paginationRef(t time.Time, version string) string {
 	ref := strconv.FormatInt(t.UnixNano()/int64(time.Millisecond), 10)
 	if version != "" {
